@@ -20,8 +20,8 @@ function sales_recurring_display($recurring) {
 
 	table_section(2);
 
-	array_selector_row(_("Repeats:"), 'interval', null,
-		array(_('Yearly'), _('Monthly'), _('Weekly')),
+	array_selector_row(_("Repeats:"), 'repeats', null,
+		array('year' => _('Yearly'), 'month' => _('Monthly'), 'week' => _('Weekly')),
 		array(
 			'select_submit' => true,
 			'async' => false // Force the whole body to redraw
@@ -30,20 +30,20 @@ function sales_recurring_display($recurring) {
 	text_row(_("Every:"), 'every', null, 25, 25,
 		_('How regularly to repeat the order')
 	);
-	switch (get_post('interval')) {
-		case 0:
+	switch (get_post('repeats')) {
+		case 'year':
 			date_row(
 				_("On:"),
 				'occur_year',
 				_("Enter date on which this order should recur")
 			);
 			break;
-		case 1:
+		case 'month':
 			text_row(_("On:"), 'occur_month', null, 25, 25,
 				_('Enter date in month on which this order should recur')
 			);
 			break;
-		case 2:
+		case 'week':
 			array_selector_row(_("On:"), 'occur_week', null,
 				array(
 					_('Monday'), _('Tuesday'), _('Wednesday'), _('Thursday'),

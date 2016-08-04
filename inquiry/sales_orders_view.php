@@ -106,7 +106,15 @@ function edit_link($row)
 {
 	global $page_nested;
 
-	return $page_nested ? '' : trans_editor_link($row['trans_type'], $row['order_no']);
+	if ($page_nested) {
+		return '';
+	}
+	$url = pager_link(
+		_('Edit'), 
+		sprintf('/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=%d', $row['order_no']),
+		ICON_EDIT
+	);
+	return $url;
 }
 
 function dispatch_link($row)
@@ -160,9 +168,10 @@ function tmpl_checkbox($row)
 
 // save also in hidden field for testing during 'Update'
 
- return checkbox(null, $name, $value, true,
- 	_('Set this order as a template for direct deliveries/invoices'))
-	. hidden('last['.$row['order_no'].']', $value, false);
+	return checkbox(
+		null, $name, $value, true,
+		_('Set this order as a template for direct deliveries/invoices')
+	) . hidden('last['.$row['order_no'].']', $value, false);
 }
 
 function invoice_prep_link($row)
@@ -292,15 +301,16 @@ if ($_POST['order_view_mode'] == 'OutstandingOnly') {
 	);
 
 } elseif ($trans_type == ST_SALESQUOTE) {
-	 array_append($cols,array(
-					array('insert'=>true, 'fun'=>'edit_link'),
-					array('insert'=>true, 'fun'=>'order_link'),
-					array('insert'=>true, 'fun'=>'prt_link')));
+	array_append($cols, array(
+		array('insert'=>true, 'fun'=>'edit_link'),
+		array('insert'=>true, 'fun'=>'order_link'),
+		array('insert'=>true, 'fun'=>'prt_link')
+	));
 } elseif ($trans_type == ST_SALESORDER) {
-	 array_append($cols,array(
-			_("Tmpl") => array('insert'=>true, 'fun'=>'tmpl_checkbox'),
-					array('insert'=>true, 'fun'=>'edit_link'),
-					array('insert'=>true, 'fun'=>'prt_link')));
+	array_append($cols, array(
+		array('insert'=>true, 'fun'=>'edit_link'),
+		array('insert'=>true, 'fun'=>'prt_link')
+	));
 };
 
 

@@ -31,7 +31,7 @@ class hooks_sgw_sales extends hooks {
 				);
 				$app->modules[1]->lappfunctions[1] = new app_function(
 					_("Sales Order &Inquiry"),
-					"modules/sgw_sales/inquiry/sales_order_view.php?type=30",
+					"modules/sgw_sales/inquiry/sales_orders_view.php?type=30",
 					'SA_SGW_SALES_INQUIRY',
 					MENU_INQUIRY
 				);

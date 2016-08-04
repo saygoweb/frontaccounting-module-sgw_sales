@@ -1,4 +1,5 @@
 <?php
+use SGW_Sales\db\SalesRecurringModel;
 /**********************************************************************
     Copyright (C) FrontAccounting, LLC.
 	Released under the terms of the GNU General Public License, GPL, 
@@ -20,11 +21,15 @@
 $path_to_root = "../..";
 $page_security = 'SA_SALESORDER';
 
+$path_to_module = __DIR__;
+
 include_once($path_to_root . "/sales/includes/cart_class.inc");
 include_once($path_to_root . "/includes/session.inc");
 include_once($path_to_root . "/sales/includes/sales_ui.inc");
-include_once($path_to_root . "/modules/sgw_sales/includes/ui/sales_order_ui.inc");
-include_once($path_to_root . "/modules/sgw_sales/includes/ui/sales_recurring_ui.inc");
+include_once($path_to_module . "/includes/ui/sales_order_ui.inc");
+include_once($path_to_module . "/includes/ui/sales_recurring_ui.inc");
+include_once($path_to_module . "/includes/ui/sales_recurring_ui.inc");
+include_once($path_to_module . "/includes/db/SalesRecurringModel.php");
 include_once($path_to_root . "/sales/includes/sales_db.inc");
 include_once($path_to_root . "/sales/includes/db/sales_types_db.inc");
 include_once($path_to_root . "/reporting/includes/reporting.inc");
@@ -75,12 +80,27 @@ if (isset($_GET['NewDelivery']) && is_numeric($_GET['NewDelivery'])) {
   	} else
 		$_SESSION['page_title'] = _($help_context = "Direct Sales Invoice");
 
-} elseif (isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber'])) {
-
-	$help_context = 'Modifying Sales Order';
-	$_SESSION['page_title'] = sprintf( _("Modifying Sales Order # %d"), $_GET['ModifyOrderNumber']);
-	create_cart(ST_SALESORDER, $_GET['ModifyOrderNumber']);
-
+} elseif (
+	(isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber'])) ||
+	(isset($_POST['trans_no']))
+) {
+	$trans_no = null;
+	if (isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber'])) {
+		$trans_no = $_GET['ModifyOrderNumber'];
+		$help_context = 'Modifying Sales Order';
+		$_SESSION['page_title'] = sprintf( _("Modifying Sales Order # %d"), $trans_no);
+		create_cart(ST_SALESORDER, $_GET['ModifyOrderNumber']);
+	} else {
+		$trans_no = $_POST['trans_no'];
+	}
+	$model = new SalesRecurringModel();
+	$model->_mapper->read($model, $trans_no, 'transNo');
+	if ($model->id) {
+		if (isset($_GET['ModifyOrderNumber'])) {
+			$_POST['sale_recurring'] = 1;
+		}
+		copy_from_recurring($model);
+	}
 } elseif (isset($_GET['ModifyQuotationNumber']) && is_numeric($_GET['ModifyQuotationNumber'])) {
 
 	$help_context = 'Modifying Sales Quotation';
@@ -337,6 +357,29 @@ function copy_from_cart()
 }
 //--------------------------------------------------------------------------------
 
+/**
+ * @param SaleRecurringModel $model
+ */
+function copy_from_recurring($model) {
+	$map = $model->_mapper->map;
+	$_POST[$map['dtFrom']] = sql2date($model->dtFrom);
+	$_POST[$map['dtTo']] = sql2date($model->dtTo);
+	$_POST[$map['repeats']] = $model->repeats;
+	$_POST[$map['every']] = $model->every;
+	switch ($model->repeats) {
+		case SalesRecurringModel::REPEAT_YEARLY:
+			$_POST['occur_year'] = sql2date(sprintf('9999-%s', $model->occur));
+			break;
+		case SalesRecurringModel::REPEAT_MONTHLY:
+			$_POST['occur_month'] = $model->occur;
+			break;
+		case SalesRecurringModel::REPEAT_WEEKLY:
+			$_POST['occur_week'] = $model->occur;
+			break;
+	}
+}
+
+
 function line_start_focus() {
   	global 	$Ajax;
 
@@ -460,27 +503,26 @@ function can_process() {
 			set_focus('dt_from');
 			return false;
 		}
-		switch ($_POST['interval']) {
-			case 0: // Year
+		switch ($_POST['repeats']) {
+			case 'year':
 				if (!is_date($_POST['occur_year'])) {
 					display_error(_("Recurring Order 'On' date is invalid."));
 					set_focus('occur_year');
 					return false;
 				}
 				break;
-			case 1: // Month
+			case 'month':
 				if (!is_numeric($_POST['occur_month'])) {
 					display_error(_("Recurring Order 'On' must be a number."));
 					set_focus('occur_month');
 					return false;
 				}
 				break;
-			case 2: // Week is a combo box, so nothing special
+			case 'week': // Week is a combo box, so nothing special
 				break;
 		}
 	}
-	return false;
-// 	return true;
+	return true;
 }
 
 //-----------------------------------------------------------------------------
@@ -517,7 +559,24 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 		$trans_no = key($_SESSION['Items']->trans_no);
 		$trans_type = $_SESSION['Items']->trans_type;
 		if ($trans_type == ST_SALESORDER && $_POST['sale_recurring']) {
-			sale_recurring_db_write($trans_no);
+			$model = new SalesRecurringModel();
+			$model->_mapper->readArray($model, $_POST, array('dtLast', 'dtFrom', 'dtTo'));
+			$model->transNo = $trans_no;
+			$model->dtFrom = date2sql($_POST['dt_from']);
+			$model->dtTo = date2sql($_POST['dt_to']);
+			switch ($model->repeats) {
+				case SalesRecurringModel::REPEAT_YEARLY:
+					$parts = explode('-', date2sql($_POST['occur_year']));
+					$model->occur = $parts[1] . '-' . $parts[2];
+					break;
+				case SalesRecurringModel::REPEAT_MONTHLY:
+					$model->occur = sprintf('%d', $_POST['occur_month']);
+					break;
+				case SalesRecurringModel::REPEAT_WEEKLY:
+					$model->occur = $_POST['occur_week'];
+					break;
+			}
+			$model->_mapper->write($model);
 		}
 		new_doc_date($_SESSION['Items']->document_date);
 		processing_end();
@@ -765,6 +824,11 @@ if ($_SESSION['Items']->trans_type == ST_SALESINVOICE) {
 start_form();
 
 hidden('cart_id');
+if (isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber'])) {
+	hidden('trans_no', $_GET['ModifyOrderNumber']);
+} else if (isset($_POST['trans_no'])) {
+	hidden('trans_no', $_POST['trans_no']);
+}
 $customer_error = display_order_header($_SESSION['Items'], !$_SESSION['Items']->is_started(), $idate);
 
 if ($customer_error == "") {

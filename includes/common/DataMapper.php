@@ -77,7 +77,7 @@ class DataMapper {
 	public function write(&$c, $key = 'id') {
 		$set = '';
 		foreach ($this->map as $property => $field) {
-			if ($property == $key) {
+			if ($property == $key || $property[0] == '_') {
 				continue;
 			}
 			if ($set) {
@@ -113,10 +113,19 @@ class DataMapper {
 	}
 	
 	public function readRow(&$c, $result) {
-		$row = db_fetch_assoc($result);
-		if ($row) {
-			foreach ($this->map as $key => $field) {
-				$c->$key = $row[$field];
+		$data = db_fetch_assoc($result);
+		return $this->readArray($c, $data);
+	}
+	
+	public function readArray(&$c, $data, $exclude = array()) {
+		if ($data) {
+			foreach ($this->map as $property => $field) {
+				if ($property[0] == '_') {
+					continue;
+				}
+				if (!in_array($property, $exclude) && array_key_exists($field, $data)) {
+					$c->$property = $data[$field];
+				}
 			}
 			return true;
 		}
