@@ -1,6 +1,6 @@
 <?php
 
-function sales_recurring_display($recurring) {
+function sales_recurring_display() {
 	global $Ajax;
 	
 	display_heading(_("Recurring Order Details"));

@@ -80,25 +80,15 @@ if (isset($_GET['NewDelivery']) && is_numeric($_GET['NewDelivery'])) {
   	} else
 		$_SESSION['page_title'] = _($help_context = "Direct Sales Invoice");
 
-} elseif (
-	(isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber'])) ||
-	(isset($_POST['trans_no']))
-) {
-	$trans_no = null;
-	if (isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber'])) {
-		$trans_no = $_GET['ModifyOrderNumber'];
-		$help_context = 'Modifying Sales Order';
-		$_SESSION['page_title'] = sprintf( _("Modifying Sales Order # %d"), $trans_no);
-		create_cart(ST_SALESORDER, $_GET['ModifyOrderNumber']);
-	} else {
-		$trans_no = $_POST['trans_no'];
-	}
+} elseif ((isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber']))) {
+	$_POST['trans_no'] = $_GET['ModifyOrderNumber'];
+	$help_context = 'Modifying Sales Order';
+	$_SESSION['page_title'] = sprintf( _("Modifying Sales Order # %d"), $_POST['trans_no']);
+	create_cart(ST_SALESORDER, $_GET['ModifyOrderNumber']);
 	$model = new SalesRecurringModel();
-	$model->_mapper->read($model, $trans_no, 'transNo');
+	$model->_mapper->read($model, $_POST['trans_no'], 'transNo');
 	if ($model->id) {
-		if (isset($_GET['ModifyOrderNumber'])) {
-			$_POST['sale_recurring'] = 1;
-		}
+		$_POST['sale_recurring'] = 1;
 		copy_from_recurring($model);
 	}
 } elseif (isset($_GET['ModifyQuotationNumber']) && is_numeric($_GET['ModifyQuotationNumber'])) {
@@ -560,6 +550,9 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 		$trans_type = $_SESSION['Items']->trans_type;
 		if ($trans_type == ST_SALESORDER && $_POST['sale_recurring']) {
 			$model = new SalesRecurringModel();
+			if (isset($_POST['trans_no'])) {
+				$model->_mapper->read($model, $_POST['trans_no'], 'transNo');
+			}
 			$model->_mapper->readArray($model, $_POST, array('dtLast', 'dtFrom', 'dtTo'));
 			$model->transNo = $trans_no;
 			$model->dtFrom = date2sql($_POST['dt_from']);
@@ -824,11 +817,10 @@ if ($_SESSION['Items']->trans_type == ST_SALESINVOICE) {
 start_form();
 
 hidden('cart_id');
-if (isset($_GET['ModifyOrderNumber']) && is_numeric($_GET['ModifyOrderNumber'])) {
-	hidden('trans_no', $_GET['ModifyOrderNumber']);
-} else if (isset($_POST['trans_no'])) {
+if (isset($_POST['trans_no'])) {
 	hidden('trans_no', $_POST['trans_no']);
 }
+
 $customer_error = display_order_header($_SESSION['Items'], !$_SESSION['Items']->is_started(), $idate);
 
 if ($customer_error == "") {
@@ -848,7 +840,7 @@ if ($customer_error == "") {
 	if (isset($_POST['sale_recurring'])) {
 		start_table(TABLESTYLE, "width='80%'", 10);
 		echo "<tr><td>";
-		sales_recurring_display(null);
+		sales_recurring_display();
 		echo "</td></tr>";
 		end_table(1);
 	} else {
