@@ -1,6 +1,6 @@
 <?php
 
-require_once(__DIR__ . '/../../../includes/common/DataMapper.php');
+require_once(__DIR__ . '/../../../vendor/autoload.php');
 
 use SGW\common\DataMapper;
 

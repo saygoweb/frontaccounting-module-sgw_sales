@@ -100,6 +100,21 @@ class DataMapper {
 		}
 	}
 	
+	public function writeArray(&$c, &$data, $exclude = array()) {
+		if ($data) {
+			foreach ($this->map as $property => $field) {
+				if ($property[0] == '_') {
+					continue;
+				}
+				if (!in_array($property, $exclude)) {
+					$data[$field] = $c->$property;
+				}
+			}
+			return true;
+		}
+		return false;
+	}
+	
 	public function read(&$c, $id, $key = 'id') {
 		$keyField = $this->map[$key];
 		// TODO Could make the '*' explicit from the map

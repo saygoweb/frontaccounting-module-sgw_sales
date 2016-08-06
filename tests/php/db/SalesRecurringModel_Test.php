@@ -1,7 +1,6 @@
 <?php
 
-require_once(__DIR__ . '/../../../includes/common/DataMapper.php');
-require_once(__DIR__ . '/../../../includes/db/SalesRecurringModel.php');
+require_once(__DIR__ . '/../../../vendor/autoload.php');
 
 require_once(__DIR__ . '/../../../../tests/php/TestConfig.php');
 require_once(__DIR__ . '/../../../../tests/php/TestEnvironment.php');

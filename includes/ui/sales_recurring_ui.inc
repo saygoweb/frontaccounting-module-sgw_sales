@@ -17,7 +17,8 @@ function sales_recurring_display() {
 		'dt_to',
 		_("Enter date this order ends")
 	);
-
+	check_row(_("Auto Create:"), 'auto');
+	
 	table_section(2);
 
 	array_selector_row(_("Repeats:"), 'repeats', null,

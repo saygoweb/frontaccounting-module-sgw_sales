@@ -18,9 +18,11 @@ use SGW_Sales\db\SalesRecurringModel;
 //	Entry Direct Invoice
 //
 
-$path_to_root = "../..";
 $page_security = 'SA_SALESORDER';
 
+include_once(__DIR__ . '/vendor/autoload.php');
+
+$path_to_root = "../..";
 $path_to_module = __DIR__;
 
 include_once($path_to_root . "/sales/includes/cart_class.inc");
@@ -29,7 +31,6 @@ include_once($path_to_root . "/sales/includes/sales_ui.inc");
 include_once($path_to_module . "/includes/ui/sales_order_ui.inc");
 include_once($path_to_module . "/includes/ui/sales_recurring_ui.inc");
 include_once($path_to_module . "/includes/ui/sales_recurring_ui.inc");
-include_once($path_to_module . "/includes/db/SalesRecurringModel.php");
 include_once($path_to_root . "/sales/includes/sales_db.inc");
 include_once($path_to_root . "/sales/includes/db/sales_types_db.inc");
 include_once($path_to_root . "/reporting/includes/reporting.inc");
@@ -351,11 +352,10 @@ function copy_from_cart()
  * @param SaleRecurringModel $model
  */
 function copy_from_recurring($model) {
+	$model->_mapper->writeArray($model, $_POST, array('dtFrom', 'dtTo', 'dtLast', 'occur'));
 	$map = $model->_mapper->map;
 	$_POST[$map['dtFrom']] = sql2date($model->dtFrom);
 	$_POST[$map['dtTo']] = sql2date($model->dtTo);
-	$_POST[$map['repeats']] = $model->repeats;
-	$_POST[$map['every']] = $model->every;
 	switch ($model->repeats) {
 		case SalesRecurringModel::REPEAT_YEARLY:
 			$_POST['occur_year'] = sql2date(sprintf('9999-%s', $model->occur));
@@ -482,7 +482,7 @@ function can_process() {
 		display_error("Invoice total amount cannot be less than zero.");
 		return false;
 	}
-	if (isset($_POST['sale_recurring'])) {
+	if (check_value('sale_recurring')) {
 		if (!is_date($_POST['dt_from'])) {
 			display_error(_("Recurring Order 'Start Date' is invalid."));
 			set_focus('dt_from');
@@ -548,7 +548,7 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 		}
 		$trans_no = key($_SESSION['Items']->trans_no);
 		$trans_type = $_SESSION['Items']->trans_type;
-		if ($trans_type == ST_SALESORDER && $_POST['sale_recurring']) {
+		if ($trans_type == ST_SALESORDER && check_value('sale_recurring')) {
 			$model = new SalesRecurringModel();
 			if (isset($_POST['trans_no'])) {
 				$model->_mapper->read($model, $_POST['trans_no'], 'transNo');
@@ -837,7 +837,7 @@ if ($customer_error == "") {
 
 	div_start('recurring');
 	//	var_dump('z', @$_POST['sale_recurring']);
-	if (isset($_POST['sale_recurring'])) {
+	if (check_value('sale_recurring')) {
 		start_table(TABLESTYLE, "width='80%'", 10);
 		echo "<tr><td>";
 		sales_recurring_display();

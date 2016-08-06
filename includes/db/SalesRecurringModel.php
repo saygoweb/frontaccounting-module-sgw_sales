@@ -11,6 +11,9 @@ class SalesRecurringModel {
 		$this->_mapper = DataMapper::createByClass(TB_PREF, $this);
 	}
 	
+	/**
+	 * @var DataMapper
+	 */
 	public $_mapper;
 	
 	const REPEAT_YEARLY  = 'year';
@@ -23,6 +26,7 @@ class SalesRecurringModel {
 	public $dtFrom;
 	public $dtTo;
 	public $dtLast;
+	public $auto;
 	public $repeats;
 	public $every;
 	public $occur;
