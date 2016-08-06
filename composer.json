@@ -1,0 +1,13 @@
+{
+    "name": "saygoweb/frontaccounting-module-sgw_sales",
+    "description": "Recurring sales module for FrontAccounting",
+    "type": "project",
+    "license": "GPLV3",
+    "require": {},
+    "autoload": {
+        "psr-4": {
+            "SGW\\": "includes/",
+            "SGW_Sales\\": "includes/"
+        }
+    }
+}
