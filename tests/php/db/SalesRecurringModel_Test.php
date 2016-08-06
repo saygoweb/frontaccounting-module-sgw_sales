@@ -33,8 +33,8 @@ class SaleRecurringModelTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals(false, $actual);
 		
 		// Create
-		$modelCreate->dtFrom = '2016-07-03';
-		$modelCreate->dtTo = '9999-01-01';
+		$modelCreate->dtStart = '2016-07-03';
+		$modelCreate->dtEnd = '9999-01-01';
 		$modelCreate->dtLast = '';
 		$modelCreate->repeats = SalesRecurringModel::REPEAT_YEARLY;
 		$modelCreate->every = 1;
@@ -47,16 +47,16 @@ class SaleRecurringModelTest extends PHPUnit_Framework_TestCase
 		$actual = $mapper->read($modelUpdate, 999, 'transNo');
 		$this->assertEquals(true, $actual);
 		$this->assertEquals($modelCreate->id, $modelUpdate->id);
-		$this->assertEquals($modelCreate->dtFrom, $modelUpdate->dtFrom);
+		$this->assertEquals($modelCreate->dtStart, $modelUpdate->dtStart);
 		
-		$modelUpdate->dtFrom = '2016-08-04';
+		$modelUpdate->dtStart = '2016-08-04';
 		$mapper->write($modelUpdate);
 
 		// Read back after Update
 		$modelUpdated = new SalesRecurringModel();
 		$mapper->read($modelUpdated, 999, 'transNo');
 		$this->assertEquals($modelUpdate->id, $modelUpdated->id);
-		$this->assertEquals($modelUpdate->dtFrom, $modelUpdated->dtFrom);
+		$this->assertEquals($modelUpdate->dtStart, $modelUpdated->dtStart);
 		
 		// Delete
 		$actual = $mapper->delete($modelUpdated->id);

@@ -352,10 +352,10 @@ function copy_from_cart()
  * @param SaleRecurringModel $model
  */
 function copy_from_recurring($model) {
-	$model->_mapper->writeArray($model, $_POST, array('dtFrom', 'dtTo', 'dtLast', 'occur'));
+	$model->_mapper->writeArray($model, $_POST, array('dtStart', 'dtEnd', 'dtLast', 'occur'));
 	$map = $model->_mapper->map;
-	$_POST[$map['dtFrom']] = sql2date($model->dtFrom);
-	$_POST[$map['dtTo']] = sql2date($model->dtTo);
+	$_POST[$map['dtStart']] = sql2date($model->dtStart);
+	$_POST[$map['dtEnd']] = sql2date($model->dtEnd);
 	switch ($model->repeats) {
 		case SalesRecurringModel::REPEAT_YEARLY:
 			$_POST['occur_year'] = sql2date(sprintf('9999-%s', $model->occur));
@@ -483,14 +483,14 @@ function can_process() {
 		return false;
 	}
 	if (check_value('sale_recurring')) {
-		if (!is_date($_POST['dt_from'])) {
+		if (!is_date($_POST['dt_start'])) {
 			display_error(_("Recurring Order 'Start Date' is invalid."));
-			set_focus('dt_from');
+			set_focus('dt_start');
 			return false;
 		}
 		if (!is_numeric($_POST['every'])) {
 			display_error(_("Recurring Order 'Every' must be a number."));
-			set_focus('dt_from');
+			set_focus('every');
 			return false;
 		}
 		switch ($_POST['repeats']) {
@@ -553,10 +553,10 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 			if (isset($_POST['trans_no'])) {
 				$model->_mapper->read($model, $_POST['trans_no'], 'transNo');
 			}
-			$model->_mapper->readArray($model, $_POST, array('dtLast', 'dtFrom', 'dtTo'));
+			$model->_mapper->readArray($model, $_POST, array('dtLast', 'dtStart', 'dtEnd'));
 			$model->transNo = $trans_no;
-			$model->dtFrom = date2sql($_POST['dt_from']);
-			$model->dtTo = date2sql($_POST['dt_to']);
+			$model->dtStart = date2sql($_POST['dt_start']);
+			$model->dtEnd = date2sql($_POST['dt_end']);
 			switch ($model->repeats) {
 				case SalesRecurringModel::REPEAT_YEARLY:
 					$parts = explode('-', date2sql($_POST['occur_year']));

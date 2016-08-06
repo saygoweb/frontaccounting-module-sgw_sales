@@ -9,12 +9,12 @@ function sales_recurring_display() {
 
 	date_row(
 		_("Start Date:"),
-		'dt_from',
+		'dt_start',
 		_("Enter date this order starts")
 	);
 	date_row(
 		_("End Date:"),
-		'dt_to',
+		'dt_end',
 		_("Enter date this order ends")
 	);
 	check_row(_("Auto Create:"), 'auto');

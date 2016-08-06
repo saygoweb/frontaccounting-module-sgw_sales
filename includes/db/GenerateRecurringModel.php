@@ -5,7 +5,7 @@ require_once(__DIR__ . '/../common/DataMapper.php');
 
 use SGW\common\DataMapper;
 
-class SalesRecurringModel {
+class GenerateRecurringModel {
 
 	public function __construct() {
 		$this->_mapper = DataMapper::createByClass(TB_PREF, $this);
@@ -20,8 +20,10 @@ class SalesRecurringModel {
 	const REPEAT_MONTHLY = 'month';
 	const REPEAT_WEEKLY  = 'week';
 	
-	public $id;
-	public $transNo;
+	public $orderNo;
+	public $reference;
+	public $name;
+	public $brName;
 	
 	public $dtStart;
 	public $dtEnd;
@@ -31,12 +33,4 @@ class SalesRecurringModel {
 	public $every;
 	public $occur;
 	
-// 	public function write() {
-// 		$this->mapper->write($this);
-// 	}
-
 }
-
-// $m = new RecurringModel();
-// $d = DataMapper::createByClass('0_', $m);
-// $d->write($m);
