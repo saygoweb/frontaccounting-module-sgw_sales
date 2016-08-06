@@ -1,5 +1,6 @@
 <?php
 use SGW_Sales\db\SalesRecurringModel;
+use SGW_Sales\controller\GenerateRecurring;
 /**********************************************************************
     Copyright (C) FrontAccounting, LLC.
 	Released under the terms of the GNU General Public License, GPL, 
@@ -363,9 +364,6 @@ function copy_from_recurring($model) {
 		case SalesRecurringModel::REPEAT_MONTHLY:
 			$_POST['occur_month'] = $model->occur;
 			break;
-		case SalesRecurringModel::REPEAT_WEEKLY:
-			$_POST['occur_week'] = $model->occur;
-			break;
 	}
 }
 
@@ -565,10 +563,9 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 				case SalesRecurringModel::REPEAT_MONTHLY:
 					$model->occur = sprintf('%d', $_POST['occur_month']);
 					break;
-				case SalesRecurringModel::REPEAT_WEEKLY:
-					$model->occur = $_POST['occur_week'];
-					break;
 			}
+			$nextDate = GenerateRecurring::nextDate($model);
+			$model->dtNext = $nextDate->format('Y-m-d');
 			$model->_mapper->write($model);
 		}
 		new_doc_date($_SESSION['Items']->document_date);

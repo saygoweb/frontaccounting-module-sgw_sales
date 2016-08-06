@@ -22,7 +22,7 @@ function sales_recurring_display() {
 	table_section(2);
 
 	array_selector_row(_("Repeats:"), 'repeats', null,
-		array('year' => _('Yearly'), 'month' => _('Monthly'), 'week' => _('Weekly')),
+		array('year' => _('Yearly'), 'month' => _('Monthly')),
 		array(
 			'select_submit' => true,
 			'async' => false // Force the whole body to redraw
