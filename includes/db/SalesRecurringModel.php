@@ -18,7 +18,6 @@ class SalesRecurringModel {
 	
 	const REPEAT_YEARLY  = 'year';
 	const REPEAT_MONTHLY = 'month';
-	const REPEAT_WEEKLY  = 'week';
 	
 	public $id;
 	public $transNo;

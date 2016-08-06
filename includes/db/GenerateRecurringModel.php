@@ -16,10 +16,6 @@ class GenerateRecurringModel {
 	 */
 	public $_mapper;
 	
-	const REPEAT_YEARLY  = 'year';
-	const REPEAT_MONTHLY = 'month';
-	const REPEAT_WEEKLY  = 'week';
-	
 	public $orderNo;
 	public $reference;
 	public $name;
