@@ -11,6 +11,7 @@
 ***********************************************************************/
 $path_to_root = "../../..";
 
+include_once($path_to_root . "/admin/db/fiscalyears_db.inc");
 include_once($path_to_root . "/includes/db_pager.inc");
 include_once($path_to_root . "/includes/session.inc");
 include_once($path_to_root . "/sales/includes/sales_ui.inc");
@@ -220,22 +221,29 @@ ref_cells(_("#:"), 'OrderNumber', '',null, '', true);
 ref_cells(_("Ref"), 'OrderReference', '',null, '', true);
 if ($show_dates)
 {
-  	date_cells(_("from:"), 'OrdersAfterDate', '', null, -user_transaction_days());
-  	date_cells(_("to:"), 'OrdersToDate', '', null, 1);
+	if ((!isset($_POST['OrdersAfterDate']) || $_POST['OrdersAfterDate'] == "") ||
+		(!isset($_POST['OrdersToDate']) || $_POST['OrdersToDate'] == "")
+	) {
+		$currentFiscalYear = get_current_fiscalyear();
+		$_POST['OrdersAfterDate'] = sql2date($currentFiscalYear['begin']);
+		$_POST['OrdersToDate'] = sql2date($currentFiscalYear['end']);
+	}	
+	date_cells(_("From:"), 'OrdersAfterDate', '', null, -user_transaction_days());
+	date_cells(_("To:"), 'OrdersToDate', '', null, 1);
 }
-locations_list_cells(_("Location:"), 'StockLocation', null, true, true);
-
-if($show_dates) {
-	end_row();
-	end_table();
-
-	start_table(TABLESTYLE_NOBORDER);
-	start_row();
-}
-stock_items_list_cells(_("Item:"), 'SelectStockFromList', null, true, true);
-
+// locations_list_cells(_("Location:"), 'StockLocation', null, true, true);
 if (!$page_nested)
-	customer_list_cells(_("Select a customer: "), 'customer_id', null, true, true);
+	customer_list_cells(_("Customer: "), 'customer_id', null, true, true);
+
+// if($show_dates) {
+// 	end_row();
+// 	end_table();
+
+// 	start_table(TABLESTYLE_NOBORDER);
+// 	start_row();
+// }
+// stock_items_list_cells(_("Item:"), 'SelectStockFromList', null, true, true);
+
 if ($trans_type == ST_SALESQUOTE)
 	check_cells(_("Show All:"), 'show_all');
 
@@ -244,7 +252,6 @@ hidden('order_view_mode', $_POST['order_view_mode']);
 hidden('type', $trans_type);
 
 end_row();
-
 end_table(1);
 //---------------------------------------------------------------------------------------------
 //	Orders inquiry table
@@ -255,16 +262,19 @@ $sql = get_sql_for_sales_orders_view($trans_type, get_post('OrderNumber'), get_p
 
 if ($trans_type == ST_SALESORDER)
 	$cols = array(
-		_("Order #") => array('fun'=>'view_link'),
+		_("#") => array('fun'=>'view_link'),
 		_("Ref") => array('type' => 'sorder.reference', 'ord' => '') ,
 		_("Customer") => array('type' => 'debtor.name' , 'ord' => '') ,
 		_("Branch"), 
-		_("Cust Order Ref"),
+// 		_("Cust Order Ref"),
+		'Type1' => 'skip',
 		_("Order Date") => array('type' =>  'date', 'ord' => ''),
-		_("Required By") =>array('type'=>'date', 'ord'=>''),
-		_("Delivery To"), 
+// 		_("Required By") =>array('type'=>'date', 'ord'=>''),
+		'Type2' => 'skip',
+// 		_("Delivery To"), 
+		'Type3' => 'skip',
 		_("Order Total") => array('type'=>'amount', 'ord'=>''),
-		'Type' => 'skip',
+		'Type4' => 'skip',
 		_("Currency") => array('align'=>'center')
 	);
 else
