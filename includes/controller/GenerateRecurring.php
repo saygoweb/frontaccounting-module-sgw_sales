@@ -13,6 +13,40 @@ class GenerateRecurring {
 	
 	public function __construct($view) {
 		$this->_view = $view;
+		$this->_force = self::FORCE_NO;
+	}
+	
+	const FORCE_NO    = 'no';
+	const FORCE_CHECK = '1';
+	const FORCE_CLEAR = '0';
+	
+	private $_force;
+	
+	public function run() {
+		global $Ajax;
+		if (get_post('GenerateInvoices')) {
+			$Ajax->activate('_page_body');
+			foreach ($_POST as $key => $value) {
+				if (strpos($key, 's_') === false) {
+					continue;
+				}
+				if ($value) {
+					$parts = explode('_', $key);
+					$this->generateInvoice($parts[1]);
+				}
+			}
+			var_dump($_POST);
+			return;
+		}
+		if (list_updated('select_all')) {
+			$Ajax->activate('_page_body');
+			$this->_force = check_value('select_all') ? self::FORCE_CHECK : self::FORCE_CLEAR; 
+		}
+		$this->_view->viewList();
+	}
+	
+	public function generateInvoice($orderNo) {
+		$this->_view->generatedInvoice($orderNo);
 	}
 	
 	public function table() {
@@ -32,6 +66,7 @@ class GenerateRecurring {
 				sr.dt_start,
 				sr.dt_end,
 				sr.dt_last,
+				sr.dt_next,
 				sr.auto,
 				sr.repeats,
 				sr.every,
@@ -65,12 +100,18 @@ class GenerateRecurring {
 				AND so.ord_date<='9999-01-01')
 			GROUP BY
 				so.order_no
+			ORDER BY
+				sr.dt_next
 		";
 		$model = new GenerateRecurringModel();
 		$result = $model->_mapper->query($sql);
 		$k = 0;
 		while ($model->_mapper->readRow($model, $result))
 		{
+			if ($this->_force != self::FORCE_NO) {
+				$key = 's_' . $model->orderNo;
+				$_POST[$key] = $this->_force;
+			}
 			$this->_view->tableRow($model, $k);
 		}
 		

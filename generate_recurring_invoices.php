@@ -24,9 +24,56 @@ include_once($path_to_root . "/sales/includes/cart_class.inc");
 include_once($path_to_root . "/includes/session.inc");
 //include_once($path_to_root . "/sales/includes/ui/sales_order_ui.inc");
 include_once($path_to_root . "/includes/ui.inc");
+include_once($path_to_root . "/includes/ui/db_pager_view.inc");
 include_once($path_to_root . "/reporting/includes/reporting.inc");
 
 class GenerateRecurringView {
+
+	/**
+	 * @var GenerateRecurring
+	 */
+	public $controller;
+	
+	public function viewList() {
+		start_form();
+		
+		start_table(TABLESTYLE_NOBORDER);
+		start_row();
+		
+		submit_cells('GenerateInvoices', _("Generate Invoices"),'',_('Select orders'), 'default');
+		
+		end_row();
+		end_table(1);
+		
+		start_table(TABLESTYLE, "width=70%");
+		table_header(array(
+			checkbox('', 'select_all', null, true),
+			_("#"),
+			_("Ref"),
+			_("Customer"),
+			_("Branch"),
+			_("Start"),
+			_("End"),
+			_("Repeats"),
+			_("Every"),
+			_("On"),
+			_("Next Invoice"),
+			""
+		));
+		
+		$due = false;
+		
+		$this->controller->table();
+		
+		end_table();
+		end_form();
+		if ($due)
+			display_note(_("Marked items are due."), 1, 0, "class='overduefg'");
+			else
+				display_note(_("No recurrent invoices are due."), 1, 0);
+		
+				br();
+	}
 	
 	/**
 	 * @param GenerateRecurringModel $model
@@ -41,8 +88,8 @@ class GenerateRecurringView {
 		//	else
 		alt_table_row_color($k);
 	
-		check_cells('', 's_' . $model->orderNo, 0);
-		label_cell($model->orderNo);
+		check_cells('', 's_' . $model->orderNo);
+		label_cell(pager_link($model->orderNo, '/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=' . $model->orderNo));
 		label_cell($model->reference);
 		label_cell($model->name);
 		label_cell($model->brName);
@@ -51,9 +98,9 @@ class GenerateRecurringView {
 		label_cell($model->repeats);
 		label_cell($model->every);
 		label_cell($model->occur);
-		label_cell("");
-		label_cell("");
-	
+		label_cell(sql2date($model->dtNext), "align='center'");
+		label_cell(pager_link(_('Edit'), '/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=' . $model->orderNo, ICON_EDIT), "align=center");
+		
 		//  	if ($myrow['overdue'])
 			//  	{
 			// 		$count = recurrent_invoice_count($myrow['id']);
@@ -69,7 +116,16 @@ class GenerateRecurringView {
 		end_row();
 	}
 	
+	public function generatedInvoice($orderNo) {
+		echo 'Generated invoice for order ' . $orderNo;
+		echo '<br/>';
+	}
+	
 }
+
+$view = new GenerateRecurringView();
+$controller = new GenerateRecurring($view);
+$view->controller = $controller;
 
 $js = "";
 if ($SysPrefs->use_popup_windows)
@@ -80,42 +136,6 @@ if (user_use_date_picker())
 
 page(_($help_context = "Create and Print Recurrent Invoices"), false, false, "", $js);
 
-// ---
-
-// ---
-
-
-
-$controller = new GenerateRecurring(new GenerateRecurringView());
-		
-start_form();
-start_table(TABLESTYLE, "width=70%");
-table_header(array(
-	"",
-	_("#"), 
-	_("Ref"), 
-	_("Customer"),
-	_("Branch"), 
-	_("Start"), 
-	_("End"), 
-	_("Repeats"),
-	_("Every"),
-	_("On"),
-	_("Next invoice"),
-	""
-));
-
-$due = false;
-
-$controller->table();
-
-end_table();
-end_form();
-if ($due)
-	display_note(_("Marked items are due."), 1, 0, "class='overduefg'");
-else
-	display_note(_("No recurrent invoices are due."), 1, 0);
-
-br();
+$controller->run();
 
 end_page();
