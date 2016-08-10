@@ -58,6 +58,7 @@ class GenerateRecurringView {
 			_("Every"),
 			_("On"),
 			_("Next Invoice"),
+			"",
 			""
 		));
 		
@@ -89,7 +90,7 @@ class GenerateRecurringView {
 		alt_table_row_color($k);
 	
 		check_cells('', 's_' . $model->orderNo);
-		label_cell(pager_link($model->orderNo, '/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=' . $model->orderNo));
+		label_cell(viewer_link($model->orderNo, 'modules/sgw_sales/view/view_sales_order.php?trans_no=' . $model->orderNo));
 		label_cell($model->reference);
 		label_cell($model->name);
 		label_cell($model->brName);
@@ -99,6 +100,7 @@ class GenerateRecurringView {
 		label_cell($model->every);
 		label_cell($model->occur);
 		label_cell(sql2date($model->dtNext), "align='center'");
+		label_cell(pager_link(_("Invoice"), '/modules/sgw_sales/sales_order_entry.php?NewInvoice=' . $model->orderNo, ICON_DOC));
 		label_cell(pager_link(_('Edit'), '/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=' . $model->orderNo, ICON_EDIT), "align=center");
 		
 		//  	if ($myrow['overdue'])
