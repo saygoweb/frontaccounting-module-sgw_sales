@@ -35,7 +35,6 @@ class GenerateRecurring {
 					$this->generateInvoice($parts[1]);
 				}
 			}
-			var_dump($_POST);
 			return;
 		}
 		if (list_updated('select_all')) {
@@ -46,7 +45,43 @@ class GenerateRecurring {
 	}
 	
 	public function generateInvoice($orderNo) {
+		global $Refs;
+
+		// Prepare the delivery (child of Sales Order)
+		$delivery = new \Cart(ST_SALESORDER, array($orderNo), true);
+		
+		$delivery->reference = 'auto';
+		foreach ($delivery->line_items as $line_no=>$item) {
+			$item->qty_done = 0;
+			$item->qty_dispatched = $item->quantity;
+			$new_price = get_price($item->stock_id, $delivery->customer_currency,
+				$delivery->sales_type, $delivery->price_factor, $delivery->document_date);
+			if ($new_price != 0)	// use template price if no price is currently set for the item.
+				$item->price = $new_price;
+		}
+		$delivery->Comments = 'Auto generated recurring delivery.';
+		
+		$trans_no = $delivery->write(1);
+		
+		// Prepare the invoice (child of Delivery)
+		$invoice = new \Cart(ST_CUSTDELIVERY, array($trans_no), true);
+		foreach ($invoice->line_items as $line_no=>$item) {
+			$item->qty_done = 0;
+			$new_price = get_price(
+				$item->stock_id, $invoice->customer_currency,
+				$invoice->sales_type, $invoice->price_factor, $invoice->document_date
+			);
+			if ($new_price != 0)	// use template price if no price is currently set for the item.
+				$item->price = $new_price;
+		}
+		$invoice->payment_terms['cash_sale'] = false; // no way to register cash payment with recurrent invoice at once
+		$invoice->Comments = 'Auto generated recurring invoice.';
+		$trans_no = $invoice->write(1);
+		
 		$this->_view->generatedInvoice($orderNo);
+		
+		return $trans_no;
+		
 	}
 	
 	public function table() {
