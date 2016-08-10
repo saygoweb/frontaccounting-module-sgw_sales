@@ -818,7 +818,7 @@ if (isset($_POST['trans_no'])) {
 	hidden('trans_no', $_POST['trans_no']);
 }
 
-$customer_error = display_order_header($_SESSION['Items'], !$_SESSION['Items']->is_started(), $idate);
+$customer_error = display_order_header($_SESSION['Items'], check_value('sale_recurring') || !$_SESSION['Items']->is_started(), $idate);
 
 if ($customer_error == "") {
 	start_table(TABLESTYLE, "width='80%'", 10);

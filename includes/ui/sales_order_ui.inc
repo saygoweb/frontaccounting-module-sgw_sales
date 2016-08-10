@@ -140,7 +140,7 @@ function display_order_summary($title, &$order, $editable_items=false)
 
 	display_heading($title);
 
-    div_start('items_table');
+	div_start('items_table');
 	start_table(TABLESTYLE, "width='90%'");
 
 	$th = array(_("Item Code"), _("Item Description"), _("Quantity"),
@@ -148,11 +148,11 @@ function display_order_summary($title, &$order, $editable_items=false)
 		_("Unit"), $order->tax_included ? _("Price after Tax") : _("Price before Tax"), _("Discount %"), _("Total"), "");
 
 	if ($order->trans_no == 0) {
-	unset( $th[3] );
+		unset( $th[3] );
 	}
 
 	if (count($order->line_items))
-	     $th[]= '';
+		$th[]= '';
 
 	table_header($th);
 
@@ -434,9 +434,11 @@ function display_order_header(&$order, $editable, $date_text)
 			$Ajax->activate('items_table');
 			$Ajax->activate('delivery_date');
 		}
-		check_row(_("Recurring Order:"), 'sale_recurring', null, true);
-		if (list_updated('sale_recurring')) {
-			$Ajax->activate('recurring');
+		if ($order->trans_type == ST_SALESORDER) {
+			check_row(_("Recurring Order:"), 'sale_recurring', null, true);
+			if (list_updated('sale_recurring')) {
+				$Ajax->activate('recurring');
+			}
 		}
 		if ($order->trans_type != ST_SALESORDER && $order->trans_type != ST_SALESQUOTE)
 		{	// 2008-11-12 Joe Hunt added dimensions
