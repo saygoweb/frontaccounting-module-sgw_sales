@@ -32,7 +32,8 @@ class GenerateRecurring {
 				}
 				if ($value) {
 					$parts = explode('_', $key);
-					$this->generateInvoice($parts[1]);
+					$invoiceNo = $this->generateInvoice($parts[1]);
+					$this->emailInvoice($invoiceNo);
 				}
 			}
 			return;
@@ -44,6 +45,40 @@ class GenerateRecurring {
 		$this->_view->viewList();
 	}
 	
+	/**
+	 * Email the given $invoiceNo (transaction number)
+	 * @param int $invoiceNo
+	 */
+	public function emailInvoice($invoiceNo) {
+		/* Note that in order to ensure that invoices don't print when require_once is
+		 * called, we unset the PARAM_X values which ensure that the printing exits early.
+		 * See rep107.php for details.
+		 */
+		unset($_POST['PARAM_0']); // from
+		unset($_POST['PARAM_1']); // to
+		unset($_POST['PARAM_2']); // currency
+		unset($_POST['PARAM_3']); // email
+		unset($_POST['PARAM_4']); // pay_service
+		unset($_POST['PARAM_5']); // comments
+		unset($_POST['PARAM_6']); // customer
+		unset($_POST['PARAM_7']); // orientation
+		for ($i = 0; $i < 8; $i++) {
+			$_POST['PARAM_' . $i] = false;
+		}
+		require_once(__DIR__ . '/../../../../reporting/rep107.php');
+		
+		$_POST['PARAM_0'] = $invoiceNo;
+		$_POST['PARAM_1'] = $invoiceNo;
+		$_POST['PARAM_2'] = ALL_TEXT; // Empty string
+		$_POST['PARAM_3'] = 1;
+		$_POST['REP_ID'] = '107';
+		print_invoices();
+	}
+	
+	/**
+	 * Generate the next invoice for the given $orderNo (transaction number)
+	 * @param int $orderNo
+	 */
 	public function generateInvoice($orderNo) {
 		global $Refs;
 
