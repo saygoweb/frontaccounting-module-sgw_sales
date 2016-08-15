@@ -24,7 +24,6 @@ class SalesRecurringModel {
 	
 	public $dtStart;
 	public $dtEnd;
-	public $dtLast;
 	public $dtNext;
 	public $auto;
 	public $repeats;

@@ -32,8 +32,14 @@ class GenerateRecurring {
 				}
 				if ($value) {
 					$parts = explode('_', $key);
-					$invoiceNo = $this->generateInvoice($parts[1]);
+					$orderNo = $parts[1];
+					$model = new SalesRecurringModel();
+					$model->_mapper->read($model, $orderNo, 'transNo');
+					$invoiceNo = $this->generateInvoice($orderNo, $model);
 					$this->emailInvoice($invoiceNo);
+					$next = self::nextDateAfter($model, new \DateTime());
+					$model->dtNext = $next->format('Y-m-d');
+					$model->_mapper->write($model, 'transNo');
 				}
 			}
 			return;
@@ -119,6 +125,9 @@ class GenerateRecurring {
 		
 	}
 	
+	public function comment($model) {
+	}
+	
 	public function table() {
 		$trans_type = ST_SALESORDER;
 		$sql = "SELECT
@@ -135,31 +144,28 @@ class GenerateRecurring {
 				sr.id,
 				sr.dt_start,
 				sr.dt_end,
-				sr.dt_last,
 				sr.dt_next,
 				sr.auto,
 				sr.repeats,
 				sr.every,
 				sr.occur,
 				debtor.curr_code,
-				Sum(line.qty_sent) AS TotDelivered,
-				Sum(line.quantity) AS TotQuantity,
-				Sum(line.invoiced) AS TotInvoiced,
 				alloc,
 				prep_amount,
 				allocs.ord_payments,
-				inv.inv_payments,
+				inv.dt_last,
+				inv.inv_total,
 				so.total,
 				so.trans_type
 			FROM ".TB_PREF."sales_orders as so
 			LEFT JOIN (SELECT trans_no_to, sum(amt) ord_payments FROM ".TB_PREF."cust_allocations WHERE trans_type_to=".ST_SALESORDER." GROUP BY trans_no_to)
 				 allocs ON so.trans_type=".ST_SALESORDER." AND allocs.trans_no_to=so.order_no
-			LEFT JOIN (SELECT order_, sum(prep_amount) inv_payments	FROM ".TB_PREF."debtor_trans WHERE type=".ST_SALESINVOICE." GROUP BY order_)
-					 inv ON so.trans_type=".ST_SALESORDER." AND inv.order_=so.order_no
+			LEFT JOIN (SELECT order_, max(tran_date) dt_last, sum(ov_amount) inv_total FROM ".TB_PREF."debtor_trans WHERE type=".ST_SALESINVOICE." GROUP BY order_)
+				 inv ON so.trans_type=".ST_SALESORDER." AND inv.order_=so.order_no
 			JOIN " .TB_PREF. "sales_recurring AS sr ON sr.trans_no=so.order_no,"
-						.TB_PREF."sales_order_details as line, "
-							.TB_PREF."debtors_master as debtor, "
-								.TB_PREF."cust_branch as branch
+			.TB_PREF."sales_order_details as line, "
+			.TB_PREF."debtors_master as debtor, "
+			.TB_PREF."cust_branch as branch
 			WHERE (so.order_no = line.order_no
 				AND so.trans_type = line.trans_type
 				AND so.trans_type = ".db_escape($trans_type)."
@@ -167,7 +173,8 @@ class GenerateRecurring {
 				AND so.branch_code = branch.branch_code
 				AND debtor.debtor_no = branch.debtor_no
 				AND so.ord_date>='2001-01-01'
-				AND so.ord_date<='9999-01-01')
+				AND so.ord_date<='9999-01-01'
+				AND sr.dt_next<=CURDATE())
 			GROUP BY
 				so.order_no
 			ORDER BY
@@ -213,7 +220,8 @@ class GenerateRecurring {
 	}
 	
 	/**
-	 * Returns the earliest occuring date after the given $date 
+	 * Returns the earliest anniversary date after the given $date
+	 * without using 'every'. 
 	 * @param GenerateRecurringModel $model
 	 * @param DateTime
 	 */
@@ -259,10 +267,10 @@ class GenerateRecurring {
 	 * @param GenerateRecurringModel $model
 	 */
 	public static function nextDate($model) {
-		if (!$model->dtLast || $model->dtLast == '0000-00-00') {
+		if (!$model->dtNext || $model->dtNext == '0000-00-00') {
 			return self::dateAfter($model, new \DateTime($model->dtStart));
 		}
-		return self::nextDateAfter($model, new \DateTime($model->dtLast));
+		return self::nextDateAfter($model, new \DateTime($model->dtNext));
 	}
 	
 	

@@ -57,6 +57,7 @@ class GenerateRecurringView {
 			_("Repeats"),
 			_("Every"),
 			_("On"),
+			_("Last Invoice"),
 			_("Next Invoice"),
 			"",
 			""
@@ -99,6 +100,7 @@ class GenerateRecurringView {
 		label_cell($model->repeats);
 		label_cell($model->every);
 		label_cell($model->occur);
+		label_cell(sql2date($model->dtLast), "align='center'");
 		label_cell(sql2date($model->dtNext), "align='center'");
 		label_cell(pager_link(_("Invoice"), '/modules/sgw_sales/sales_order_entry.php?NewInvoice=' . $model->orderNo, ICON_DOC));
 		label_cell(pager_link(_('Edit'), '/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=' . $model->orderNo, ICON_EDIT), "align=center");
