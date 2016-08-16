@@ -3,6 +3,7 @@ namespace SGW_Sales\controller;
 
 use SGW_Sales\db\GenerateRecurringModel;
 use SGW_Sales\db\SalesRecurringModel;
+use ActiveRecord\DateTime;
 
 class GenerateRecurring {
 	
@@ -35,7 +36,7 @@ class GenerateRecurring {
 					$orderNo = $parts[1];
 					$model = new SalesRecurringModel();
 					$model->_mapper->read($model, $orderNo, 'transNo');
-					$invoiceNo = $this->generateInvoice($orderNo, $model);
+					$invoiceNo = $this->generateInvoice($orderNo, self::comment($model, new \DateTime()));
 					$this->emailInvoice($invoiceNo);
 					$next = self::nextDateAfter($model, new \DateTime());
 					$model->dtNext = $next->format('Y-m-d');
@@ -83,9 +84,11 @@ class GenerateRecurring {
 	
 	/**
 	 * Generate the next invoice for the given $orderNo (transaction number)
+	 * The given $comment is applied to the invoice. 
 	 * @param int $orderNo
+	 * @param string $comment
 	 */
-	public function generateInvoice($orderNo) {
+	public function generateInvoice($orderNo, $comment) {
 		global $Refs;
 
 		// Prepare the delivery (child of Sales Order)
@@ -116,16 +119,13 @@ class GenerateRecurring {
 				$item->price = $new_price;
 		}
 		$invoice->payment_terms['cash_sale'] = false; // no way to register cash payment with recurrent invoice at once
-		$invoice->Comments = 'Auto generated recurring invoice.';
+		$invoice->Comments = $comment;
 		$trans_no = $invoice->write(1);
 		
 		$this->_view->generatedInvoice($orderNo);
 		
 		return $trans_no;
 		
-	}
-	
-	public function comment($model) {
 	}
 	
 	public function table() {
@@ -271,6 +271,40 @@ class GenerateRecurring {
 			return self::dateAfter($model, new \DateTime($model->dtStart));
 		}
 		return self::nextDateAfter($model, new \DateTime($model->dtNext));
+	}
+	
+	/**
+	 * @param GenerateRecurringModel $model
+	 * @param DateTime $today
+	 */
+	public static function comment($model, $today) {
+		$startDate = new \DateTime();
+		switch ($model->repeats) {
+			case SalesRecurringModel::REPEAT_YEARLY:
+				$parts = explode('-', $model->dtStart);
+				$startDate->setDate($today->format('Y'), $parts[1], $parts[2]);
+				while ($startDate > $today) {
+					$startDate->sub(new \DateInterval("P1Y"));
+				}
+				$endDate = clone $startDate;
+				$endDate->add(new \DateInterval("P1Y"));
+				$endDate->sub(new \DateInterval("P1D"));
+				break;
+			case SalesRecurringModel::REPEAT_MONTHLY:
+				$parts = explode('-', $model->dtStart);
+				$startDate->setDate($today->format('Y'), $today->format('m'), $parts[2]);
+				while ($startDate > $today) {
+					$startDate->sub(new \DateInterval("P1M"));
+				}
+				$endDate = clone $startDate;
+				$endDate->add(new \DateInterval("P1M"));
+				$endDate->sub(new \DateInterval("P1D"));
+				break;
+		}
+		$dateFormat = 'j F Y';
+		$comment = _("Invoice for period ") . $startDate->format($dateFormat) . _(' to ') . $endDate->format($dateFormat);
+		return $comment;
+		
 	}
 	
 	

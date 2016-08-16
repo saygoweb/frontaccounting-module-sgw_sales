@@ -82,7 +82,7 @@ class GenerateRecurringTest extends PHPUnit_Framework_TestCase
 		$c = new GenerateRecurring(new GenerateRecurringMockView());
 		$m = new GenerateRecurringModel();
 		$m->dtStart = '2016-04-01';
-		$m->dtLast = '2016-04-06';
+		$m->dtNext = '2016-04-06';
 		$m->repeats = SalesRecurringModel::REPEAT_YEARLY;
 		$m->every = 2;
 		$m->occur = '04-06';
@@ -91,4 +91,31 @@ class GenerateRecurringTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals('2018-04-06', $actual->format('Y-m-d'));
 	}
 	
+	function testComment_With1YearNotInStartYear() {
+		$m = new GenerateRecurringModel();
+		$m->dtStart = '2016-04-01';
+		$m->dtNext = '2017-04-06'; // Not relevant to this test
+		$m->repeats = SalesRecurringModel::REPEAT_YEARLY;
+		$m->every = 1;
+		$m->occur = '04-06';
+		
+		$today = new \DateTime('2017-04-06');
+		$actual = GenerateRecurring::comment($m, $today);
+		$this->assertEquals('Invoice for period 1 April 2017 to 31 March 2018', $actual);
+		
+	}
+	
+	function testComment_With1MonthNotInStartYear() {
+		$m = new GenerateRecurringModel();
+		$m->dtStart = '2016-04-01';
+		$m->dtNext = '2017-04-06'; // Not relevant to this test
+		$m->repeats = SalesRecurringModel::REPEAT_MONTHLY;
+		$m->every = 1;
+		$m->occur = '21';
+		
+		$today = new \DateTime('2017-09-21');
+		$actual = GenerateRecurring::comment($m, $today);
+		$this->assertEquals('Invoice for period 1 September 2017 to 30 September 2017', $actual);
+		
+	}
 }
