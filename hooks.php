@@ -62,6 +62,18 @@ class hooks_sgw_sales extends hooks {
 		return array($security_areas, $security_sections);
 	}
 	
+	/* This method is called on extension activation for company.   */
+	function activate_extension($company, $check_only = true)
+	{
+		global $db_connections;
+	
+		$updates = array(
+			'update_1.0.sql' => array('sales_recurring')
+		);
+	
+		return $this->update_databases($company, $updates, $check_only);
+	}
+	
 	private function remove_menu_item(&$items, $offset) {
 		array_splice($items, $offset, 1);
 	}
