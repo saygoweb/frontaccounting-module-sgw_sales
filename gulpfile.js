@@ -68,10 +68,10 @@ gulp.task('package-zip', function(cb) {
     src: "./",
     name: "frontaccounting",
     version: "2.4.RC1",
-    release: "-bootstrap.theme.2"
+    release: "-sgw_sales.module.1"
   };
   execute(
-    'rm -f *.zip && cd <%= src %> && zip -r -x@../upload-exclude-zip.txt -q ../<%= name %>-<%= version %><%= release %>.zip *',
+    'rm -f *.zip && cd <%= src %> && zip -r -x@./upload-exclude-zip.txt -q ./<%= name %>-<%= version %><%= release %>.zip *',
     options,
     cb
   );
@@ -84,10 +84,10 @@ gulp.task('package-tar', function(cb) {
     src: "./",
     name: "frontaccounting",
     version: "2.4.RC1",
-    release: "-bootstrap.theme.2"
+    release: "-sgw_sales.module.1"
   };
   execute(
-    'rm -f *.tgz && cd <%= src %> && tar -cvzf ../<%= name %>-<%= version %><%= release %>.tgz -X ../upload-exclude.txt *',
+    'rm -f *.tgz && cd <%= src %> && tar -cvzf ./<%= name %>-<%= version %><%= release %>.tgz -X upload-exclude.txt *',
     options,
     cb
   );

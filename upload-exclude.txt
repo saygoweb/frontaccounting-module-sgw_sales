@@ -1,0 +1,15 @@
+.git
+.gitignore
+.hg
+.hgtags
+.hgignore
+node_modules
+gulpfile.js
+composer.*
+package.json
+bower.json
+upload-exclude.txt
+upload-exclude-zip.txt
+*.zip
+*.tgz
+tests
