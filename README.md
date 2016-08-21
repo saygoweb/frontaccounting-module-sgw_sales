@@ -11,6 +11,8 @@ A module for Front Accounting that provides recurring invoicing for sales orders
  - Yearly and Monthly recurring intervals.
  - Set the date in the year, or date in month on which the recurring invoice should be triggered.
 
+![Order Entry](/docs/OrderEntry.png?raw=true "Sales Order Entry")
+
 ## Invoice Generation ##
 
  - Shows a list of orders that are due to be invoiced.
@@ -18,3 +20,5 @@ A module for Front Accounting that provides recurring invoicing for sales orders
  - Can email invoices when they are generated.
  - Delivery notes are automatically generated.
  - Invoices are recorded against the Sales Order.
+
+![Invoice Generation](/docs/GenerateInvoices.png?raw=true "Invoice Generation")
