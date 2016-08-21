@@ -2,8 +2,8 @@
 
 ini_set('xdebug.show_exception_trace', 0);
 
-if (file_exists(__DIR__ . '/_frontaccounting')) {
-	$rootPath = realpath(__DIR__ . '/_frontaccounting');
+if (file_exists(__DIR__ . '/../../_frontaccounting')) {
+	$rootPath = realpath(__DIR__ . '/../../_frontaccounting');
 } else {
 	$rootPath = realpath(__DIR__ . '/../../../..');
 }
