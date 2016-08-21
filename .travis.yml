@@ -15,7 +15,7 @@ before_script:
   - ln -s `pwd` _frontaccounting/modules/sgw_sales
   # composer
   - composer install
-  - composer -d _frontaccounting/modules/tests install
+  - composer install -d _frontaccounting/modules/tests
   # install npm deps and gulp
   - npm install -g gulp
   - npm install
