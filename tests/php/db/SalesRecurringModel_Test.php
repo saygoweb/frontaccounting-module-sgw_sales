@@ -2,8 +2,8 @@
 
 require_once(__DIR__ . '/../../../vendor/autoload.php');
 
-require_once(__DIR__ . '/../../../../tests/php/TestConfig.php');
-require_once(__DIR__ . '/../../../../tests/php/TestEnvironment.php');
+require_once(__DIR__ . '/../TestConfig.php');
+require_once(TEST_PATH . '/TestEnvironment.php');
 
 use SGW_Sales\db\SalesRecurringModel;
 use SGW\common\DataMapper;
@@ -14,6 +14,10 @@ class SaleRecurringModelTest extends PHPUnit_Framework_TestCase
 		if ( ($msg=TestEnvironment::isGoodToGo()) != 'OK') {
 			$this->markTestSkipped($msg);
 		} else {
+			require_once(__DIR__ . '/../../../hooks.php');
+			TestEnvironment::includeFile('admin/db/maintenance_db.inc');
+			$hook = new hooks_sgw_sales();
+			$hook->activate_extension(0, false);
 			$sql = 'DELETE FROM ' . TB_PREF . 'sales_recurring WHERE trans_no=998';
 			db_query($sql);
 			$sql = 'DELETE FROM ' . TB_PREF . 'sales_recurring WHERE trans_no=999';
