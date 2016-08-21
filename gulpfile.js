@@ -190,6 +190,14 @@ gulp.task('env-db', function(cb) {
     );
 });
 
+gulp.task('env-db-demo', function(cb) {
+  execute(
+      'gunzip -c tests/data/fa_demo.sql.gz | mysql -u travis -D fa_test',
+      null,
+      cb
+    );
+});
+
 gulp.task('env-test', ['env-db', 'env-files'], function() {});
 
 gulp.task('test-e2e-travis', ['env-test'], function(cb) {
