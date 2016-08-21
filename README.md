@@ -1,5 +1,7 @@
 # FrontAccounting Module: sgw_sales
 
+[![Build Status](https://travis-ci.org/saygoweb/frontaccounting-module-sgw_sales.svg?branch=master)](https://travis-ci.org/saygoweb/frontaccounting-module-sgw_sales)
+
 A module for Front Accounting that provides recurring invoicing for sales orders.
 
 ## Order Entry ##
