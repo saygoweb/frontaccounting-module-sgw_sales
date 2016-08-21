@@ -222,7 +222,7 @@ gulp.task('test-restore', function() {
     .pipe(gulp.dest('htdocs/'));
 });
 
-gulp.task('test-php', ['env-db'], function(cb) {
+gulp.task('test-php', ['env-test'], function(cb) {
   var command = '/usr/bin/env php _frontaccounting/modules/tests/vendor/bin/phpunit -c tests/phpunit.xml';
   execute(command, null, function(err) {
     cb(null); // Swallow the error propagation so that gulp doesn't display a nodejs backtrace.
