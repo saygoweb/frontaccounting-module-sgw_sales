@@ -14,12 +14,13 @@ before_script:
   # create a link in the modules folder to have this module under test appear correctly to frontaccounting
   - ln -s `pwd` _frontaccounting/modules/sgw_sales
   # composer
+  - phpenv config-rm xdebug.ini
   - composer install
   - composer install -d _frontaccounting/modules/tests
   # install npm deps and gulp
   - npm install -g gulp
   - npm install
-  - cp modules/tests/webdriver.json ./node_modules/protractor/config.json
+  - cp _frontaccounting/modules/tests/webdriver.json ./node_modules/protractor/config.json
   - ./node_modules/protractor/bin/webdriver-manager update --standalone
   - ./node_modules/protractor/bin/webdriver-manager start &
   - sleep 5
