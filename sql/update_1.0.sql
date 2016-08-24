@@ -11,3 +11,9 @@ CREATE TABLE IF NOT EXISTS `0_sales_recurring` (
   PRIMARY KEY (`id`),
   KEY `order_no` (`trans_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+ALTER TABLE `0_sales_recurring`
+  ADD KEY `order_no` (`trans_no`);
+
+ALTER TABLE `0_sales_recurring`
+  MODIFY `id` int(11) unsigned NOT NULL AUTO_INCREMENT;
