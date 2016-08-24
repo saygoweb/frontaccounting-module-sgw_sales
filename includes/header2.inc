@@ -1,2 +1,2 @@
 <?php
-require_once(__DIR__ . '/../../../reporting/includes/header2.inc');
+include(__DIR__ . '/../../../reporting/includes/header2.inc');

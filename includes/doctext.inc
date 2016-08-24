@@ -1,2 +1,2 @@
 <?php
-require_once(__DIR__ . '/../../../reporting/includes/doctext.inc');
+include(__DIR__ . '/../../../reporting/includes/doctext.inc');
