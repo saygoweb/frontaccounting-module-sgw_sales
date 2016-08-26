@@ -564,8 +564,12 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 					$model->occur = sprintf('%d', $_POST['occur_month']);
 					break;
 			}
-			$nextDate = GenerateRecurring::nextDate($model);
-			$model->dtNext = $nextDate->format('Y-m-d');
+			if (!$model->dtNext || $model->dtNext == '0000-00-00') {
+				// Only update dtNext if we've not set it before otherwise the dtNext will be pushed out
+				// another period each time the Sales Order is saved.
+				$nextDate = GenerateRecurring::nextDate($model);
+				$model->dtNext = $nextDate->format('Y-m-d');
+			}
 			$model->_mapper->write($model);
 		}
 		new_doc_date($_SESSION['Items']->document_date);
