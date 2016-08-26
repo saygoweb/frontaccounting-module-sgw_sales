@@ -287,7 +287,7 @@ class GenerateRecurring {
 					$startDate->sub(new \DateInterval("P1Y"));
 				}
 				$endDate = clone $startDate;
-				$endDate->add(new \DateInterval("P1Y"));
+				$endDate->add(new \DateInterval("P" . $model->every . "Y"));
 				$endDate->sub(new \DateInterval("P1D"));
 				break;
 			case SalesRecurringModel::REPEAT_MONTHLY:
@@ -297,7 +297,7 @@ class GenerateRecurring {
 					$startDate->sub(new \DateInterval("P1M"));
 				}
 				$endDate = clone $startDate;
-				$endDate->add(new \DateInterval("P1M"));
+				$endDate->add(new \DateInterval("P" . $model->every . "M"));
 				$endDate->sub(new \DateInterval("P1D"));
 				break;
 		}
