@@ -15,7 +15,7 @@ function sales_recurring_display() {
 	date_row(
 		_("End Date:"),
 		'dt_end',
-		_("Enter date this order ends")
+		_("Enter date this order ends, may be blank if no end date")
 	);
 	check_row(_("Auto Create:"), 'auto');
 	
@@ -36,7 +36,7 @@ function sales_recurring_display() {
 			date_row(
 				_("On:"),
 				'occur_year',
-				_("Enter date on which this order should recur")
+				_("Enter date on which this order should recur in the format (MM-DD)")
 			);
 			break;
 		case 'month':
