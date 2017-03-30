@@ -22,6 +22,8 @@ class GenerateRecurring {
 	const FORCE_CLEAR = '0';
 	
 	private $_force;
+
+	private $_showAll;
 	
 	public function run() {
 		global $Ajax;
@@ -48,6 +50,10 @@ class GenerateRecurring {
 		if (list_updated('select_all')) {
 			$Ajax->activate('_page_body');
 			$this->_force = check_value('select_all') ? self::FORCE_CHECK : self::FORCE_CLEAR; 
+		}
+		if (list_updated('show_all')) {
+			$Ajax->activate('_page_body');
+			$this->_showAll = check_value('show_all');
 		}
 		$this->_view->viewList();
 	}
@@ -174,7 +180,9 @@ class GenerateRecurring {
 				AND debtor.debtor_no = branch.debtor_no
 				AND so.ord_date>='2001-01-01'
 				AND so.ord_date<='9999-01-01'
-				AND sr.dt_next<=CURDATE())
+		";
+		$sql .=  $this->_showAll ? " AND sr.dt_next<=CURDATE())" : ")";
+		$sql .= "
 			GROUP BY
 				so.order_no
 			ORDER BY

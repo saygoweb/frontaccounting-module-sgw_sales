@@ -34,7 +34,7 @@ var execute = function(command, options, callback) {
 };
 
 var paths = {
-  src: ['htdocs/**/*.inc', 'htdocs/**/*.php', '!htdocs/vendor/**'],
+  src: ['!vendor/**', '**/*.php'],
   testE2E: ['tests/e2e/**/*.js'],
   testUnit: ['tests/php/**/*.php']
 };
@@ -49,7 +49,7 @@ gulp.task('default', function() {
 });
 
 gulp.task('do-reload', function() {
-  return gulp.src('htdocs/wp/index.php').pipe(livereload(server));
+  return gulp.src('../index.php').pipe(livereload(server));
 });
 
 gulp.task('reload', function() {
@@ -57,7 +57,7 @@ gulp.task('reload', function() {
     if (err) {
       return console.log(err);
     }
-    gulp.watch(srcTheme, [ 'do-reload' ]);
+    gulp.watch(paths.src, [ 'do-reload' ]);
   });
 });
 
@@ -184,7 +184,7 @@ gulp.task('env-files', function() {
 
 gulp.task('env-db', function(cb) {
   execute(
-      'gunzip -c tests/data/fa_test.sql.gz | mysql -u travis -D fa_test',
+      'gunzip -c tests/data/fa_test.sql.gz | mysql -u travis --password=\'\' -D fa_test',
       null,
       cb
     );

@@ -39,7 +39,8 @@ class GenerateRecurringView {
 		
 		start_table(TABLESTYLE_NOBORDER);
 		start_row();
-		
+
+		check_cells('Show All', 'show_all', null, true);
 		submit_cells('GenerateInvoices', _("Generate Invoices"),'',_('Select orders'), 'default');
 		
 		end_row();
