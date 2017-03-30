@@ -180,8 +180,9 @@ class GenerateRecurring {
 				AND debtor.debtor_no = branch.debtor_no
 				AND so.ord_date>='2001-01-01'
 				AND so.ord_date<='9999-01-01'
+				AND (sr.dt_end>CURDATE() OR sr.dt_end='0000-00-00')
 		";
-		$sql .=  $this->_showAll ? " AND sr.dt_next<=CURDATE())" : ")";
+		$sql .=  !$this->_showAll ? " AND sr.dt_next<=CURDATE())" : ")";
 		$sql .= "
 			GROUP BY
 				so.order_no
