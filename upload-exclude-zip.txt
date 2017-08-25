@@ -4,6 +4,7 @@
 */.hgtags
 */.hgignore
 */node_modules/*
+*/_frontaccounting/*
 */gulpfile.js
 */composer.*
 */package.json

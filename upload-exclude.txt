@@ -3,6 +3,7 @@
 .hg
 .hgtags
 .hgignore
+_frontaccounting
 node_modules
 gulpfile.js
 composer.*
