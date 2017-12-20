@@ -1,16 +1,12 @@
 language: php
 php:
   - "5.4"
+  - "7.0"
 services:
   - mysql
-before_install:
-  - wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-1.9.7-linux-x86_64.tar.bz2
-  - tar -xf phantomjs-1.9.7-linux-x86_64.tar.bz2                                                                                                                                                                                                
-  - sudo rm -rf /usr/local/phantomjs                                                                                                                                                                                                          
-  - sudo mv phantomjs-1.9.7-linux-x86_64 /usr/local/phantomjs
 before_script:
   # get the latest frontaccounting code
-  - git clone -b unstable-cp https://github.com/cambell-prince/frontaccounting.git _frontaccounting
+  - git clone -b master-cp https://github.com/cambell-prince/frontaccounting.git _frontaccounting
   # create a link in the modules folder to have this module under test appear correctly to frontaccounting
   - ln -s `pwd` _frontaccounting/modules/sgw_sales
   # composer
@@ -20,17 +16,9 @@ before_script:
   # install npm deps and gulp
   - npm install -g gulp
   - npm install
-  - cp _frontaccounting/modules/tests/webdriver.json ./node_modules/protractor/config.json
-  - ./node_modules/protractor/bin/webdriver-manager update --standalone
-  - ./node_modules/protractor/bin/webdriver-manager start &
-  - sleep 5
-  - php -S localhost:8000 -t _frontaccounting &
-  - sleep 1
   # db setup
   - mysql -e 'create database fa_test;'
   # Should be good to do gulp from here on
-  - sleep 3
 script:
   - gulp test-php
 # - gulp test-e2e-travis
-
