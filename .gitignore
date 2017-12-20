@@ -1,3 +1,6 @@
 /vendor/
 /node_modules/
-/_frontaccounting/
+/_frontaccounting
+/.vscode
+*.tgz
+*.zip
