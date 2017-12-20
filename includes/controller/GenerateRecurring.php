@@ -277,7 +277,7 @@ class GenerateRecurring {
 	 */
 	public static function nextDate($model) {
 		if (!$model->dtNext || $model->dtNext == '0000-00-00') {
-			return self::dateAfter($model, new \DateTime($model->dtStart));
+			return self::dateBefore($model, new \DateTime($model->dtStart));
 		}
 		return self::nextDateAfter($model, new \DateTime($model->dtNext));
 	}
