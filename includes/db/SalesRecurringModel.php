@@ -1,14 +1,22 @@
 <?php
 namespace SGW_Sales\db;
 
-require_once(__DIR__ . '/../common/DataMapper.php');
+use Anorm\Anorm;
+use Anorm\DataMapper;
+use Anorm\Model;
 
-use SGW\common\DataMapper;
-
-class SalesRecurringModel {
+class SalesRecurringModel extends Model {
 
 	public function __construct() {
-		$this->_mapper = DataMapper::createByClass(TB_PREF, $this);
+		$pdo = Anorm::pdo();
+		parent::__construct($pdo, DataMapper::createByClass($pdo, $this, DB::tablePrefix()));
+	}
+
+	/** @return SalesRecurringModel */
+	public static function readByTransNo($transNo) {
+		return DataMapper::find(SalesRecurringModel::class, Anorm::pdo())
+			->where('trans_no=:transNo', [':transNo' => $transNo])
+			->oneOrThrow();
 	}
 	
 	/**

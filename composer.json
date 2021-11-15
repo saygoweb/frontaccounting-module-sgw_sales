@@ -3,7 +3,9 @@
     "description": "Recurring sales module for FrontAccounting",
     "type": "project",
     "license": "GPLV3",
-    "require": {},
+    "require": {
+        "saygoweb/anorm": "^1.5"
+    },
     "autoload": {
         "psr-4": {
             "SGW\\": "includes/",

@@ -127,7 +127,7 @@ class SalesOrderListView {
             "/sales/customer_invoice.php?InvoicePrepayments=" .$row['order_no'], ICON_DOC) : '';
     }
 
-    public function renderSeachBar($show_dates)
+    public function renderView($show_dates, $table)
     {
         global $page_nested;
 
@@ -165,17 +165,11 @@ class SalesOrderListView {
         end_row();
         end_table(1);
 
-    }
-
-    public function renderPager($table)
-    {
         display_db_pager($table);
         submit_center('Update', _("Update"), true, '', null);
         
         end_form();
-        
     }
-
 
 };
 

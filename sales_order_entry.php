@@ -1,4 +1,6 @@
 <?php
+
+use SGW\common\Mapper;
 use SGW_Sales\db\SalesRecurringModel;
 use SGW_Sales\controller\GenerateRecurring;
 /**********************************************************************
@@ -85,9 +87,8 @@ if (isset($_GET['NewDelivery']) && is_numeric($_GET['NewDelivery'])) {
 	$help_context = 'Modifying Sales Order';
 	$_SESSION['page_title'] = sprintf( _("Modifying Sales Order # %d"), $_POST['trans_no']);
 	create_cart(ST_SALESORDER, $_GET['ModifyOrderNumber']);
-	$model = new SalesRecurringModel();
-	$model->_mapper->read($model, $_POST['trans_no'], 'transNo');
-	if ($model->id) {
+	$model = SalesRecurringModel::readByTransNo($_POST['trans_no']);
+	if ($model && $model->id) {
 		$_POST['sale_recurring'] = 1;
 		copy_from_recurring($model);
 	}
@@ -351,7 +352,7 @@ function copy_from_cart()
  * @param SaleRecurringModel $model
  */
 function copy_from_recurring($model) {
-	$model->_mapper->writeArray($model, $_POST, array('dtStart', 'dtEnd', 'dtLast', 'occur'));
+	Mapper::writeArray($model, $_POST, array('dtStart', 'dtEnd', 'dtLast', 'occur'));
 	$map = $model->_mapper->map;
 	$_POST[$map['dtStart']] = sql2date($model->dtStart);
 	$_POST[$map['dtEnd']] = sql2date($model->dtEnd);
@@ -547,12 +548,15 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 		if ($trans_type == ST_SALESORDER && check_value('sale_recurring')) {
 			$model = new SalesRecurringModel();
 			if (isset($_POST['trans_no'])) {
-				$model->_mapper->read($model, $_POST['trans_no'], 'transNo');
+				$model->readByTransNo($_POST['trans_no']);
 			}
 			$model->_mapper->readArray($model, $_POST, array('dtLast', 'dtStart', 'dtEnd'));
 			$model->transNo = $trans_no;
 			$model->dtStart = date2sql($_POST['dt_start']);
 			$model->dtEnd = date2sql($_POST['dt_end']);
+			if (!$model->dtEnd) {
+				$model->dtEnd = null;
+			}
 			switch ($model->repeats) {
 				case SalesRecurringModel::REPEAT_YEARLY:
 					$parts = explode('-', date2sql($_POST['occur_year']));
@@ -568,7 +572,7 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 				$nextDate = GenerateRecurring::nextDate($model);
 				$model->dtNext = $nextDate->format('Y-m-d');
 			}
-			$model->_mapper->write($model);
+			$model->write();
 		}
 		new_doc_date($_SESSION['Items']->document_date);
 		processing_end();

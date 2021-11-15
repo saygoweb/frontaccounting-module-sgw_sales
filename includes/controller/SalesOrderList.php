@@ -110,8 +110,6 @@ class SalesOrderList {
             $_POST['OrdersToDate'] = sql2date($currentFiscalYear['end']);
         }	
 
-        $this->_view->renderSeachBar($show_dates);
-       
         //---------------------------------------------------------------------------------------------
         //	Orders inquiry table
         //
@@ -187,7 +185,7 @@ class SalesOrderList {
         
         $table->width = "80%";
        
-        $this->_view->renderPager($table);
+        $this->_view->renderView($show_dates, $table);
     
     }
 }
