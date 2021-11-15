@@ -15,8 +15,6 @@ use SGW_Sales\controller\GenerateRecurring;
 
 $page_security = 'SA_SALESINVOICE';
 
-include_once(__DIR__ . '/vendor/autoload.php');
-
 $path_to_root = "../..";
 $path_to_module = __DIR__;
 

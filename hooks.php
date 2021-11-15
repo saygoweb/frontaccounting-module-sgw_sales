@@ -1,6 +1,8 @@
 <?php
 define ('SS_SGW_SALES', 121<<8);
 
+include_once(__DIR__ . '/vendor/autoload.php');
+
 class hooks_sgw_sales extends hooks {
 
 	function __construct() {
