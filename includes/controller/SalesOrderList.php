@@ -1,7 +1,10 @@
 <?php
 namespace SGW_Sales\controller;
 
-use SGW\common\SqlPager;
+use SalesOrderListView;
+use SGW\common\Pager\ModelPager;
+use SGW\common\Pager\SqlPager;
+use SGW_Sales\db\SalesOrderListModel;
 
 class SalesOrderList {
 
@@ -20,12 +23,16 @@ class SalesOrderList {
     //
     function check_overdue($row)
     {
-        if ($this->trans_type == ST_SALESQUOTE)
-            return (date1_greater_date2(Today(), sql2date($row['delivery_date'])));
-        else
-            return ($row['type'] == 0
-                && date1_greater_date2(Today(), sql2date($row['delivery_date']))
-                && ($row['TotDelivered'] < $row['TotQuantity']));
+        return false;
+    }
+
+    public function formatDescription($model, $cell)
+    {
+        $tokens = explode('-', $cell, 2);
+        if (count($tokens) == 2) {
+            return trim($tokens[1]);
+        }
+        return $cell;
     }
 
     public function run() {
@@ -113,26 +120,14 @@ class SalesOrderList {
         //---------------------------------------------------------------------------------------------
         //	Orders inquiry table
         //
-        $sql = get_sql_for_sales_orders_view($this->trans_type, get_post('OrderNumber'), get_post('order_view_mode'),
-            get_post('SelectStockFromList'), get_post('OrdersAfterDate'), get_post('OrdersToDate'), get_post('OrderReference'), get_post('StockLocation'),
-            get_post('customer_id'));
-        
         if ($this->trans_type == ST_SALESORDER)
             $cols = array(
-                _("#") => array('fun'=> [$this->_view, 'view_link']),
-                _("Ref") => array('type' => 'sorder.reference', 'ord' => '') ,
-                _("Customer") => array('type' => 'debtor.name' , 'ord' => '') ,
-                // _("Branch") =>array('type' => 'branch'),
-                'Type0' => 'skip',
-                // _("Cust Order Ref"),
-                'Type1' => 'skip',
-                _("Order Date") => array('type' =>  'date', 'ord' => ''),
-                //	_("Required By") =>array('type'=>'date', 'ord'=>''),
-                'Type2' => 'skip',
-                //	_("Delivery To"), 
-                'Type3' => 'skip',
-                _("Order Total") => array('type'=>'amount', 'ord'=>''),
-                'Type4' => 'skip',
+                _("#") => array('name' => 'orderNo', 'fun'=> [$this->_view, 'view_link']),
+                _("Ref") => array('name' => 'reference', 'ord' => '') ,
+                _("Customer") => array('name' => 'name' , 'ord' => '') ,
+                _("Order Date") => array('name' =>  'ordDate', 'type' => 'date', 'ord' => ''),
+                _("Domain") => array('name' =>  'description', 'fun' => [$this, 'formatDescription']),
+                _("Order Total") => array('name' => 'total', 'type' => 'amount', 'ord'=>''),
                 _("Currency") => array('align'=>'center')
             );
         else
@@ -179,8 +174,28 @@ class SalesOrderList {
                 array('insert'=>true, 'fun'=>[$this->_view, 'prt_link'])
             ));
         };
-        
-        $table =& SqlPager::new_db_pager('orders_tbl', $sql, $cols);
+
+        $count = SalesOrderListModel::countByFilter(
+            get_post('OrderNumber'),
+            get_post('OrderReference'),
+            get_post('OrdersAfterDate'),
+            get_post('OrdersToDate'),
+            get_post('customer_id')
+        );
+        $query = SalesOrderListModel::queryByFilter(
+            get_post('OrderNumber'),
+            get_post('OrderReference'),
+            get_post('OrdersAfterDate'),
+            get_post('OrdersToDate'),
+            get_post('customer_id')
+        );
+        $table = new ModelPager('orders_tbl', SalesOrderListModel::class, $query, $count, $cols);
+
+        // $sql = get_sql_for_sales_orders_view($this->trans_type, get_post('OrderNumber'), get_post('order_view_mode'),
+        //     get_post('SelectStockFromList'), get_post('OrdersAfterDate'), get_post('OrdersToDate'), get_post('OrderReference'), get_post('StockLocation'),
+        //     get_post('customer_id'));
+        // $table =& SqlPager::new_db_pager('orders_tbl', $sql, $cols);
+
         $table->set_marker([$this, 'check_overdue'], _("Marked items are overdue."));
         
         $table->width = "80%";

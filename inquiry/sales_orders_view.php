@@ -11,6 +11,7 @@
 ***********************************************************************/
 
 use SGW_Sales\controller\SalesOrderList;
+use SGW_Sales\db\SalesOrderListModel;
 
 $path_to_root = "../../..";
 
@@ -44,12 +45,12 @@ class SalesOrderListView {
         return  get_customer_trans_view_str($this->controller->trans_type, $order_no);
     }
 
-    function prt_link($row)
+    function prt_link(SalesOrderListModel $model)
     {
-        return print_document_link($row['order_no'], _("Print"), true, $this->controller->trans_type, ICON_PRINT);
+        return print_document_link($model->orderNo, _("Print"), true, $this->controller->trans_type, ICON_PRINT);
     }
 
-    function edit_link($row) 
+    function edit_link(SalesOrderListModel $model) 
     {
         global $page_nested;
 
@@ -58,7 +59,7 @@ class SalesOrderListView {
         }
         $url = pager_link(
             _('Edit'), 
-            sprintf('/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=%d', $row['order_no']),
+            sprintf('/modules/sgw_sales/sales_order_entry.php?ModifyOrderNumber=%d', $model->orderNo),
             ICON_EDIT
         );
         return $url;

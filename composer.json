@@ -4,7 +4,7 @@
     "type": "project",
     "license": "GPLV3",
     "require": {
-        "saygoweb/anorm": "^1.5"
+        "saygoweb/anorm": "^1.6"
     },
     "autoload": {
         "psr-4": {

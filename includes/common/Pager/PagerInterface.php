@@ -1,9 +1,12 @@
 <?php
-namespace SGW\Common;
+namespace SGW\common\Pager;
 
 interface PagerInterface {
 
     function select_records();
+
+    /** @return Generator */
+    function generator();
 
     // Expected properties
     // $name
