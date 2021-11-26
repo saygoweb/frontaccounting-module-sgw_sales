@@ -1,12 +1,27 @@
 <?php
+
+use Anorm\Anorm;
+use SGW_Sales\db\DB;
+
 define ('SS_SGW_SALES', 121<<8);
+
+include_once(__DIR__ . '/vendor/autoload.php');
 
 class hooks_sgw_sales extends hooks {
 
 	function __construct() {
+		global $db_connections;
 		$this->module_name = 'sgw_sales';
+
+		$company = user_company();
+		$dbCredentials = $db_connections[$company];
+		$host = $dbCredentials['host'];
+		$database = $dbCredentials['dbname'];
+		Anorm::connect(Anorm::DEFAULT, "mysql:host=$host;dbname=$database", $dbCredentials['dbuser'], $dbCredentials['dbpassword']);
+
+		DB::init($dbCredentials['tbpref']);
 	}
-	
+
 	/*
 		Install additonal menu options provided by module
 		*/

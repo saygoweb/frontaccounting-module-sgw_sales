@@ -15,8 +15,6 @@ use SGW_Sales\controller\GenerateRecurring;
 
 $page_security = 'SA_SALESINVOICE';
 
-include_once(__DIR__ . '/vendor/autoload.php');
-
 $path_to_root = "../..";
 $path_to_module = __DIR__;
 
@@ -52,7 +50,6 @@ class GenerateRecurringView {
 			_("#"),
 			_("Ref"),
 			_("Customer"),
-			_("Branch"),
 			_("Start"),
 			_("End"),
 			_("Repeats"),
@@ -95,7 +92,7 @@ class GenerateRecurringView {
 		label_cell(viewer_link($model->orderNo, 'modules/sgw_sales/view/view_sales_order.php?trans_no=' . $model->orderNo));
 		label_cell($model->reference);
 		label_cell($model->name);
-		label_cell($model->brName);
+		// label_cell($model->brName);
 		label_cell(sql2date($model->dtStart), "align='center'");
 		label_cell(sql2date($model->dtEnd), "align='center'");
 		label_cell($model->repeats);

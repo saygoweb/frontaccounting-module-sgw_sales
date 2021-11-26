@@ -36,13 +36,12 @@ class GenerateRecurring {
 				if ($value) {
 					$parts = explode('_', $key);
 					$orderNo = $parts[1];
-					$model = new SalesRecurringModel();
-					$model->_mapper->read($model, $orderNo, 'transNo');
+					$model = SalesRecurringModel::readByTransNo($orderNo);
 					$invoiceNo = $this->generateInvoice($orderNo, self::comment($model, new \DateTime()));
 					$this->emailInvoice($invoiceNo);
 					$next = self::nextDateAfter($model, new \DateTime());
 					$model->dtNext = $next->format('Y-m-d');
-					$model->_mapper->write($model, 'transNo');
+					$model->write();
 				}
 			}
 			return;
@@ -135,72 +134,15 @@ class GenerateRecurring {
 	}
 	
 	public function table() {
-		$trans_type = ST_SALESORDER;
-		$sql = "SELECT
-				so.order_no,
-				so.reference,
-				debtor.name,
-				branch.br_name,"
-						//		. ($filter == 'InvoiceTemplates' || $filter == 'DeliveryTemplates' ? "so.comments, " : "so.customer_ref, ")
-				."so.ord_date,
-				so.delivery_date,
-				so.deliver_to,
-				Sum(line.unit_price*line.quantity*(1-line.discount_percent))+freight_cost AS OrderValue,
-				so.type,
-				sr.id,
-				sr.dt_start,
-				sr.dt_end,
-				sr.dt_next,
-				sr.auto,
-				sr.repeats,
-				sr.every,
-				sr.occur,
-				debtor.curr_code,
-				alloc,
-				prep_amount,
-				allocs.ord_payments,
-				inv.dt_last,
-				inv.inv_total,
-				so.total,
-				so.trans_type
-			FROM ".TB_PREF."sales_orders as so
-			LEFT JOIN (SELECT trans_no_to, sum(amt) ord_payments FROM ".TB_PREF."cust_allocations WHERE trans_type_to=".ST_SALESORDER." GROUP BY trans_no_to)
-				 allocs ON so.trans_type=".ST_SALESORDER." AND allocs.trans_no_to=so.order_no
-			LEFT JOIN (SELECT order_, max(tran_date) dt_last, sum(ov_amount) inv_total FROM ".TB_PREF."debtor_trans WHERE type=".ST_SALESINVOICE." GROUP BY order_)
-				 inv ON so.trans_type=".ST_SALESORDER." AND inv.order_=so.order_no
-			JOIN " .TB_PREF. "sales_recurring AS sr ON sr.trans_no=so.order_no,"
-			.TB_PREF."sales_order_details as line, "
-			.TB_PREF."debtors_master as debtor, "
-			.TB_PREF."cust_branch as branch
-			WHERE (so.order_no = line.order_no
-				AND so.trans_type = line.trans_type
-				AND so.trans_type = ".db_escape($trans_type)."
-				AND so.debtor_no = debtor.debtor_no
-				AND so.branch_code = branch.branch_code
-				AND debtor.debtor_no = branch.debtor_no
-				AND so.ord_date>='2001-01-01'
-				AND so.ord_date<='9999-01-01'
-				AND (sr.dt_end>CURDATE() OR sr.dt_end='0000-00-00')
-		";
-		$sql .=  !$this->_showAll ? " AND sr.dt_next<=CURDATE())" : ")";
-		$sql .= "
-			GROUP BY
-				so.order_no
-			ORDER BY
-				sr.dt_next
-		";
-		$model = new GenerateRecurringModel();
-		$result = $model->_mapper->query($sql);
 		$k = 0;
-		while ($model->_mapper->readRow($model, $result))
-		{
+		$result = GenerateRecurringModel::find($this->_showAll);
+		foreach ($result as $model) {
 			if ($this->_force != self::FORCE_NO) {
 				$key = 's_' . $model->orderNo;
 				$_POST[$key] = $this->_force;
 			}
 			$this->_view->tableRow($model, $k);
 		}
-		
 	}
 	
 	/**
@@ -276,7 +218,7 @@ class GenerateRecurring {
 	 * @param GenerateRecurringModel $model
 	 */
 	public static function nextDate($model) {
-		if (!$model->dtNext || $model->dtNext == '0000-00-00') {
+		if (!$model->dtNext) {
 			return self::dateBefore($model, new \DateTime($model->dtStart));
 		}
 		return self::nextDateAfter($model, new \DateTime($model->dtNext));
@@ -292,8 +234,9 @@ class GenerateRecurring {
 			case SalesRecurringModel::REPEAT_YEARLY:
 				$parts = explode('-', $model->dtStart);
 				$startDate->setDate($today->format('Y'), $parts[1], $parts[2]);
-				while ($startDate > $today) {
-					$startDate->sub(new \DateInterval("P1Y"));
+				$interval = $today->diff($startDate, true); // absolute so always positive
+				if ($interval->days > 365/2) {
+					$startDate->add(new \DateInterval("P1Y"));
 				}
 				$endDate = clone $startDate;
 				$endDate->add(new \DateInterval("P" . $model->every . "Y"));
@@ -302,6 +245,7 @@ class GenerateRecurring {
 			case SalesRecurringModel::REPEAT_MONTHLY:
 				$parts = explode('-', $model->dtStart);
 				$startDate->setDate($today->format('Y'), $today->format('m'), $parts[2]);
+				// The below is likely wrong, but currently unused.
 				while ($startDate > $today) {
 					$startDate->sub(new \DateInterval("P1M"));
 				}

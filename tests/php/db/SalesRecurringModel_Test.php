@@ -31,9 +31,8 @@ class SaleRecurringModelTest extends PHPUnit_Framework_TestCase
 	function testSalesRecurringCRUD_OK()
 	{
 		$modelCreate = new SalesRecurringModel();
-		$mapper = DataMapper::createByClass(TB_PREF, $modelCreate);
 		// Read non-existant
-		$actual = $mapper->read($modelCreate, 999, 'transNo');
+		$actual = SalesRecurringModel::readByTransNo(999);
 		$this->assertEquals(false, $actual);
 		
 		// Create
@@ -43,26 +42,27 @@ class SaleRecurringModelTest extends PHPUnit_Framework_TestCase
 		$modelCreate->repeats = SalesRecurringModel::REPEAT_YEARLY;
 		$modelCreate->every = 1;
 		$modelCreate->transNo = 999;
-		$mapper->write($modelCreate);
+		$modelCreate->write();
 		$this->assertNotFalse($modelCreate->id);
 		
 		// Read back and Update
 		$modelUpdate = new SalesRecurringModel();
-		$actual = $mapper->read($modelUpdate, 999, 'transNo');
+		$actual = SalesRecurringModel::readByTransNo(999);
 		$this->assertEquals(true, $actual);
 		$this->assertEquals($modelCreate->id, $modelUpdate->id);
 		$this->assertEquals($modelCreate->dtStart, $modelUpdate->dtStart);
 		
 		$modelUpdate->dtStart = '2016-08-04';
-		$mapper->write($modelUpdate);
+		$modelUpdate->write();
 
 		// Read back after Update
-		$modelUpdated = new SalesRecurringModel();
-		$mapper->read($modelUpdated, 999, 'transNo');
+		$modelUpdated = SalesRecurringModel::readByTransNo(999);
 		$this->assertEquals($modelUpdate->id, $modelUpdated->id);
 		$this->assertEquals($modelUpdate->dtStart, $modelUpdated->dtStart);
 		
 		// Delete
+		$model = new SalesRecurringModel();
+		$mapper = $model->_mapper;
 		$actual = $mapper->delete($modelUpdated->id);
 		$this->assertEquals(true, $actual);
 		$actual = $mapper->delete($modelUpdated->id);
