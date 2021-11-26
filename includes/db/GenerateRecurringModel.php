@@ -27,7 +27,7 @@ class GenerateRecurringModel extends Model {
 				"inv ON so.trans_type=" . $transactionType . " AND inv.order_=so.order_no")
 			->join("JOIN " . DB::prefix("sales_recurring") . " AS sr ON sr.trans_no=so.order_no")
 			->join("JOIN " . DB::prefix("debtors_master") . " AS debtor ON so.debtor_no=debtor.debtor_no")
-			->where("(sr.dt_end>CURDATE() OR sr.dt_end='0000-00-00')" . ($showAll ? "" : " AND sr.dt_next<=CURDATE()"), [])
+			->where("(sr.dt_end>CURDATE() OR sr.dt_end IS NULL)" . ($showAll ? "" : " AND (sr.dt_next<=CURDATE() OR sr.dt_next IS NULL)"), [])
 			->groupBy("so.order_no")
 			->orderBy("sr.dt_next")
 			->some();

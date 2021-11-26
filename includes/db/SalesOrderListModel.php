@@ -14,40 +14,43 @@ class SalesOrderListModel extends Model {
         parent::__construct($pdo, DataMapper::createByClass($pdo, $this, DB::tablePrefix()));
     }
 
+    private static function where(QueryBuilder $q, $orderNo, $ref, $dtFrom, $dtTo, $customer)
+    {
+        if ($orderNo) {
+            return $q->where('so.order_no=:orderNo', [':orderNo' => $orderNo]);
+        }
+        if ($ref) {
+            return $q->where('so.reference=:reference', [':reference' => $ref]);
+        }
+        if ($customer) {
+            return $q->where('so.debtor_no=:customer', [':customer' => $customer]);
+        }
+        return $q->where('so.ord_date>=:dtFrom AND so.ord_date<=:dtTo', [':dtFrom' => date2sql($dtFrom), ':dtTo' => date2sql($dtTo)]);
+    }
+
     /** @return int */
     public static function countByFilter($orderNo, $ref, $dtFrom, $dtTo, $customer) {
-        /** @var CountModel */
+        /** @var QueryBuilder */
         $result = DataMapper::find(CountModel::class, Anorm::pdo())
             ->select("COUNT(so.order_no) AS count")
-            ->from(DB::prefix("sales_orders") . " AS so")
-            // ->join("JOIN " . DB::prefix("debtors_master") . " AS debtor ON so.debtor_no=debtor.debtor_no")
-            // TODO where
-            ->where("so.ord_date>=:dtFrom AND so.ord_date<=:dtTo", [':dtFrom' => date2sql($dtFrom), ':dtTo' => date2sql($dtTo)])
-            // ->where("(sr.dt_end>CURDATE() OR sr.dt_end='0000-00-00')" . ($showAll ? "" : " AND sr.dt_next<=CURDATE()"), [])
-            // ->groupBy("so.order_no")
+            ->from(DB::prefix("sales_orders") . " AS so");
+        /** @var CountModel */
+        $result = self::where($result, $orderNo, $ref, $dtFrom, $dtTo, $customer)
             ->one();
         return $result->count;
     }
 
-        /** @return QueryBuilder */
+    /** @return QueryBuilder */
     public static function queryByFilter($orderNo, $ref, $dtFrom, $dtTo, $customer) {
         $transactionType = ST_SALESORDER;
         $result = DataMapper::find(SalesOrderListModel::class, Anorm::pdo())
             ->select("so.order_no,so.reference,debtor.name,so.ord_date,so.total,so.trans_type," .
                 "sd.description")
             ->from(DB::prefix("sales_orders") . " AS so")
-            // ->join("LEFT JOIN " .
-            // 	"(SELECT order_, max(tran_date) dt_last, sum(ov_amount) inv_total FROM ". DB::prefix("debtor_trans") . " WHERE type=" . ST_SALESINVOICE . " GROUP BY order_) " .
-            // 	"inv ON so.trans_type=" . $transactionType . " AND inv.order_=so.order_no")
-            // ->join("LEFT JOIN " .
-            //     "(SELECT order_no, sum(unit_price*quantity*(1-discount_percent)) ord_total FROM " . DB::prefix("sales_order_details") . " WHERE trans_type=" . ST_SALESORDER . " GROUP BY order_no) " .
-            //     "ord ON so.trans_type=" . $transactionType . " AND ord.order_no=so.order_no")
-            // ->join("JOIN " . DB::prefix("sales_recurring") . " AS sr ON sr.trans_no=so.order_no")
             ->join("LEFT JOIN " . DB::prefix("sales_order_details") .  " AS sd ON so.order_no=sd.order_no AND sd.stk_code='HDOM'")
-            ->join("JOIN " . DB::prefix("debtors_master") . " AS debtor ON so.debtor_no=debtor.debtor_no")
-            // TODO where
-            ->where("so.ord_date>=:dtFrom AND so.ord_date<=:dtTo", [':dtFrom' => date2sql($dtFrom), ':dtTo' => date2sql($dtTo)])
-            // ->where("(sr.dt_end>CURDATE() OR sr.dt_end='0000-00-00')" . ($showAll ? "" : " AND sr.dt_next<=CURDATE()"), [])
+            ->join("JOIN " . DB::prefix("debtors_master") . " AS debtor ON so.debtor_no=debtor.debtor_no");
+
+        $result = self::where($result, $orderNo, $ref, $dtFrom, $dtTo, $customer)
             ->groupBy("so.order_no")
             ->orderBy("so.order_no");
         return $result;

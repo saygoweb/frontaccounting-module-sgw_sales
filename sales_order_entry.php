@@ -352,10 +352,11 @@ function copy_from_cart()
  * @param SaleRecurringModel $model
  */
 function copy_from_recurring($model) {
-	Mapper::writeArray($model, $_POST, array('dtStart', 'dtEnd', 'dtLast', 'occur'));
+	Mapper::writeArray($model, $_POST, array('dtStart', 'dtEnd', 'dtNext', 'occur'));
 	$map = $model->_mapper->map;
 	$_POST[$map['dtStart']] = sql2date($model->dtStart);
 	$_POST[$map['dtEnd']] = sql2date($model->dtEnd);
+	$_POST[$map['dtNext']] = sql2date($model->dtNext);
 	switch ($model->repeats) {
 		case SalesRecurringModel::REPEAT_YEARLY:
 			$_POST['occur_year'] = sql2date(sprintf('9999-%s', $model->occur));
@@ -548,7 +549,7 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 		if ($trans_type == ST_SALESORDER && check_value('sale_recurring')) {
 			$model = new SalesRecurringModel();
 			if (isset($_POST['trans_no'])) {
-				$model->readByTransNo($_POST['trans_no']);
+				$model = SalesRecurringModel::readByTransNo($_POST['trans_no']);
 			}
 			$model->_mapper->readArray($model, $_POST, array('dtLast', 'dtStart', 'dtEnd'));
 			$model->transNo = $trans_no;
@@ -566,11 +567,9 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 					$model->occur = sprintf('%d', $_POST['occur_month']);
 					break;
 			}
-			if (!$model->dtNext || $model->dtNext == '0000-00-00') {
-				// Only update dtNext if we've not set it before otherwise the dtNext will be pushed out
-				// another period each time the Sales Order is saved.
-				$nextDate = GenerateRecurring::nextDate($model);
-				$model->dtNext = $nextDate->format('Y-m-d');
+			$dtNext = date2sql($_POST['dt_next']);
+			if (!$dtNext) {
+				$model->dtNext = null;
 			}
 			$model->write();
 		}

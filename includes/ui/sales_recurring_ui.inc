@@ -15,7 +15,9 @@ function sales_recurring_display() {
 	date_row(
 		_("End Date:"),
 		'dt_end',
-		_("Enter date this order ends, may be blank if no end date")
+		_("Enter date this order ends, may be blank if no end date"),
+		null,
+		0, 0, 1001
 	);
 	check_row(_("Auto Create:"), 'auto');
 	
@@ -53,6 +55,13 @@ function sales_recurring_display() {
 			);
 			break;
 	}
+	date_row(
+		_("Next Date:"),
+		'dt_next',
+		_("Date of next invoice, may be blank to auto-calculate"),
+		null,
+		0, 0, 1001
+	);
 	
 	end_outer_table(1);
 

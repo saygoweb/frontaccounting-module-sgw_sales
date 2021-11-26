@@ -65,7 +65,11 @@ class ModelPager /*extends db_pager */ implements PagerInterface
             $this->set_page(1);
         } else {
             $this->pagerData = $_SESSION[$name];
-            $this->pagerData->max_page = $this->page_len ? ceil($this->rec_count / $this->page_len) : 1;
+            $maxPage = $this->page_len ? ceil($this->rec_count / $this->page_len) : 1;
+            if ($this->pagerData->max_page != $maxPage) {
+                $this->pagerData->max_page = $maxPage;
+                $this->set_page(1);
+            }
         }
 
         $this->width = "95%";

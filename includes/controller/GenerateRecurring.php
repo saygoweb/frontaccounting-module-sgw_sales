@@ -218,7 +218,7 @@ class GenerateRecurring {
 	 * @param GenerateRecurringModel $model
 	 */
 	public static function nextDate($model) {
-		if (!$model->dtNext || $model->dtNext == '0000-00-00') {
+		if (!$model->dtNext) {
 			return self::dateBefore($model, new \DateTime($model->dtStart));
 		}
 		return self::nextDateAfter($model, new \DateTime($model->dtNext));
@@ -234,8 +234,9 @@ class GenerateRecurring {
 			case SalesRecurringModel::REPEAT_YEARLY:
 				$parts = explode('-', $model->dtStart);
 				$startDate->setDate($today->format('Y'), $parts[1], $parts[2]);
-				while ($startDate > $today) {
-					$startDate->sub(new \DateInterval("P1Y"));
+				$interval = $today->diff($startDate, true); // absolute so always positive
+				if ($interval->days > 365/2) {
+					$startDate->add(new \DateInterval("P1Y"));
 				}
 				$endDate = clone $startDate;
 				$endDate->add(new \DateInterval("P" . $model->every . "Y"));
@@ -244,6 +245,7 @@ class GenerateRecurring {
 			case SalesRecurringModel::REPEAT_MONTHLY:
 				$parts = explode('-', $model->dtStart);
 				$startDate->setDate($today->format('Y'), $today->format('m'), $parts[2]);
+				// The below is likely wrong, but currently unused.
 				while ($startDate > $today) {
 					$startDate->sub(new \DateInterval("P1M"));
 				}
