@@ -47,7 +47,7 @@ class SalesOrderListModel extends Model {
             ->select("so.order_no,so.reference,debtor.name,so.ord_date,so.total,so.trans_type," .
                 "sd.description")
             ->from(DB::prefix("sales_orders") . " AS so")
-            ->join("LEFT JOIN " . DB::prefix("sales_order_details") .  " AS sd ON so.order_no=sd.order_no AND sd.stk_code='HDOM'")
+            ->join("LEFT JOIN " . DB::prefix("sales_order_details") .  " AS sd ON so.order_no=sd.order_no")
             ->join("JOIN " . DB::prefix("debtors_master") . " AS debtor ON so.debtor_no=debtor.debtor_no");
 
         $result = self::where($result, $orderNo, $ref, $dtFrom, $dtTo, $customer)
