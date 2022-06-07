@@ -567,8 +567,8 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 					$model->occur = sprintf('%d', $_POST['occur_month']);
 					break;
 			}
-			$dtNext = date2sql($_POST['dt_next']);
-			if (!$dtNext) {
+			$model->dtNext = date2sql($_POST['dt_next']);
+			if (!$model->dtNext) {
 				$model->dtNext = null;
 			}
 			$model->write();
