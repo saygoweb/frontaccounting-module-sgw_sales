@@ -552,6 +552,7 @@ if (isset($_POST['ProcessOrder']) && can_process()) {
 				$model = SalesRecurringModel::readByTransNo($_POST['trans_no']);
 			}
 			$model->_mapper->readArray($model, $_POST, array('dtLast', 'dtStart', 'dtEnd'));
+			$model->auto = $model->auto ? 1 : 0; // TODO Could use a BoolTransformer CP 2022-06
 			$model->transNo = $trans_no;
 			$model->dtStart = date2sql($_POST['dt_start']);
 			$model->dtEnd = date2sql($_POST['dt_end']);
