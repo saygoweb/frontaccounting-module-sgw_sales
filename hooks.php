@@ -17,7 +17,9 @@ class hooks_sgw_sales extends hooks {
 		$dbCredentials = $db_connections[$company];
 		$host = $dbCredentials['host'];
 		$database = $dbCredentials['dbname'];
-		Anorm::connect(Anorm::DEFAULT, "mysql:host=$host;dbname=$database", $dbCredentials['dbuser'], $dbCredentials['dbpassword']);
+		if ($_SESSION["wa_current_user"]->logged_in()) {
+			Anorm::connect(Anorm::DEFAULT, "mysql:host=$host;dbname=$database", $dbCredentials['dbuser'], $dbCredentials['dbpassword']);
+		}
 
 		DB::init($dbCredentials['tbpref']);
 	}
