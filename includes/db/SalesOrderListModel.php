@@ -14,13 +14,16 @@ class SalesOrderListModel extends Model {
         parent::__construct($pdo, DataMapper::createByClass($pdo, $this, DB::tablePrefix()));
     }
 
-    private static function where(QueryBuilder $q, $orderNo, $ref, $dtFrom, $dtTo, $customer)
+    private static function where(QueryBuilder $q, $orderNo, $ref, $domain, $dtFrom, $dtTo, $customer)
     {
         if ($orderNo) {
             return $q->where('so.order_no=:orderNo', [':orderNo' => $orderNo]);
         }
         if ($ref) {
             return $q->where('so.reference=:reference', [':reference' => $ref]);
+        }
+        if ($domain) {
+            return $q->where('sd.description LIKE :domain', [':domain' => "%$domain%"]);
         }
         if ($customer) {
             return $q->where('so.debtor_no=:customer', [':customer' => $customer]);
@@ -29,19 +32,23 @@ class SalesOrderListModel extends Model {
     }
 
     /** @return int */
-    public static function countByFilter($orderNo, $ref, $dtFrom, $dtTo, $customer) {
+    public static function countByFilter($orderNo, $ref, $domain, $dtFrom, $dtTo, $customer) {
+        // NOTE: The count is not accurate if there are multiple lines for the same order.
         /** @var QueryBuilder */
         $result = DataMapper::find(CountModel::class, Anorm::pdo())
             ->select("COUNT(so.order_no) AS count")
             ->from(DB::prefix("sales_orders") . " AS so");
+        if ($domain) {
+            $result = $result->join("LEFT JOIN " . DB::prefix("sales_order_details") .  " AS sd ON so.order_no=sd.order_no");
+        }
         /** @var CountModel */
-        $result = self::where($result, $orderNo, $ref, $dtFrom, $dtTo, $customer)
+        $result = self::where($result, $orderNo, $ref, $domain, $dtFrom, $dtTo, $customer)
             ->one();
         return $result->count;
     }
 
     /** @return QueryBuilder */
-    public static function queryByFilter($orderNo, $ref, $dtFrom, $dtTo, $customer) {
+    public static function queryByFilter($orderNo, $ref, $domain, $dtFrom, $dtTo, $customer) {
         $transactionType = ST_SALESORDER;
         $result = DataMapper::find(SalesOrderListModel::class, Anorm::pdo())
             ->select("so.order_no,so.reference,debtor.name,so.ord_date,so.total,so.trans_type," .
@@ -50,7 +57,7 @@ class SalesOrderListModel extends Model {
             ->join("LEFT JOIN " . DB::prefix("sales_order_details") .  " AS sd ON so.order_no=sd.order_no")
             ->join("JOIN " . DB::prefix("debtors_master") . " AS debtor ON so.debtor_no=debtor.debtor_no");
 
-        $result = self::where($result, $orderNo, $ref, $dtFrom, $dtTo, $customer)
+        $result = self::where($result, $orderNo, $ref, $domain, $dtFrom, $dtTo, $customer)
             ->groupBy("so.order_no")
             ->orderBy("so.order_no");
         return $result;
