@@ -97,11 +97,11 @@ class SalesOrderList {
         //---------------------------------------------------------------------------------------------
         //	Order Search Form
         //
-        if (get_post('_OrderNumber_changed') || get_post('_OrderReference_changed')) // enable/disable selection controls
+        if (get_post('_OrderNumber_changed') || get_post('_OrderReference_changed') || get_post('_Domain_changed')) // enable/disable selection controls
         {
-            $disable = get_post('OrderNumber') !== '' || get_post('OrderReference') !== '';
-        
-              if ($show_dates) {
+            $disable = get_post('OrderNumber') !== '' || get_post('OrderReference') !== '' || get_post('Domain') !== '';
+
+            if ($show_dates) {
                 $Ajax->addDisable(true, 'OrdersAfterDate', $disable);
                 $Ajax->addDisable(true, 'OrdersToDate', $disable);
             }
@@ -178,6 +178,7 @@ class SalesOrderList {
         $count = SalesOrderListModel::countByFilter(
             get_post('OrderNumber'),
             get_post('OrderReference'),
+            get_post('Domain'),
             get_post('OrdersAfterDate'),
             get_post('OrdersToDate'),
             get_post('customer_id')
@@ -185,6 +186,7 @@ class SalesOrderList {
         $query = SalesOrderListModel::queryByFilter(
             get_post('OrderNumber'),
             get_post('OrderReference'),
+            get_post('Domain'),
             get_post('OrdersAfterDate'),
             get_post('OrdersToDate'),
             get_post('customer_id')

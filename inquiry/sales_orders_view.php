@@ -137,7 +137,8 @@ class SalesOrderListView {
         start_table(TABLESTYLE_NOBORDER);
         start_row();
         ref_cells(_("#:"), 'OrderNumber', '',null, '', true);
-        ref_cells(_("Ref"), 'OrderReference', '',null, '', true);
+        ref_cells(_("Ref:"), 'OrderReference', '',null, '', true);
+        ref_cells(_("Domain:"), 'Domain', '',null, '', true);
         if ($show_dates)
         {
             date_cells(_("From:"), 'OrdersAfterDate', '', null, -user_transaction_days());
