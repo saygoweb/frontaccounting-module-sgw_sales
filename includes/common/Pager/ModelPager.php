@@ -57,8 +57,7 @@ class ModelPager /*extends db_pager */ implements PagerInterface
 
         $this->set_columns($cols);
 
-        $dataClass = get_class($_SESSION[$name]);
-        if (!isset($_SESSION[$name]) || $dataClass != PagerData::class) {
+        if (!isset($_SESSION[$name]) || !($_SESSION[$name] instanceof PagerData)) {
             $_SESSION[$name] = new PagerData();
             $this->pagerData = $_SESSION[$name];
             $this->pagerData->max_page = $this->page_len ? ceil($this->rec_count / $this->page_len) : 1;
@@ -124,7 +123,6 @@ class ModelPager /*extends db_pager */ implements PagerInterface
         global $Ajax;
 
         $Ajax->activate("_{$this->name}_span");
-        $this->data = array();
 
         if ($this->rec_count == 0) return true;
 

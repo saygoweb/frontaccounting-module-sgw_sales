@@ -18,10 +18,29 @@ class hooks_sgw_sales extends hooks {
 		$host = $dbCredentials['host'];
 		$database = $dbCredentials['dbname'];
 		if ($_SESSION["wa_current_user"]->logged_in()) {
-			Anorm::connect(Anorm::DEFAULT, "mysql:host=$host;dbname=$database", $dbCredentials['dbuser'], $dbCredentials['dbpassword']);
+			Anorm::connect(Anorm::DEFAULT, "mysql:host=$host;dbname=$database" . self::dsnCharset(), $dbCredentials['dbuser'], $dbCredentials['dbpassword']);
 		}
 
 		DB::init($dbCredentials['tbpref']);
+	}
+
+	/**
+	 * The charset FrontAccounting reads its own connection in, as a DSN suffix.
+	 *
+	 * FA sets its connection to the encoding of the user's language
+	 * (db_set_encoding() in includes/db/connect_db_mysqli.inc) and sends its pages
+	 * in the same. What Anorm reads - customer names, line descriptions - is
+	 * printed into those pages, so it has to arrive in that encoding too. Anorm 3
+	 * asks for utf8mb4 when the DSN names no charset, which is only right for a
+	 * UTF-8 language.
+	 * @return string
+	 */
+	private static function dsnCharset() {
+		if (!isset($_SESSION['language']) || !function_exists('get_mysql_encoding_name')) {
+			return '';
+		}
+		$charset = get_mysql_encoding_name(strtoupper($_SESSION['language']->encoding));
+		return $charset ? ";charset=$charset" : '';
 	}
 
 	/*
