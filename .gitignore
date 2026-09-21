@@ -13,3 +13,6 @@ log/
 
 # phpunit's test-order cache
 .phpunit.result.cache
+
+# tests/Http/ServiceWithoutAPageTest puts this here for the length of a test
+/test-service-probe.php

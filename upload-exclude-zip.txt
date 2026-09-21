@@ -37,3 +37,4 @@ tests/*
 *.tgz
 upload-exclude.txt
 upload-exclude-zip.txt
+test-service-probe.php
