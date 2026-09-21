@@ -1,0 +1,34 @@
+{
+    "variables": {
+        "name": "frontaccounting",
+        "version": "2.4",
+        "release": "-sgw_sales.module.1.6"
+    },
+    "vendor-prod": {
+        "by": [
+            "rm -rf vendor",
+            "composer install --no-dev --no-interaction"
+        ]
+    },
+    "vendor-dev": {
+        "by": [
+            "composer install --no-interaction"
+        ]
+    },
+    "package": {
+        "depends": [
+            "vendor-prod"
+        ],
+        "by": [
+            "rm -f *.zip *.tgz",
+            "zip -r -x@./upload-exclude-zip.txt -y -q ./{{name}}-{{version}}{{release}}.zip .",
+            "tar -czf ./{{name}}-{{version}}{{release}}.tgz -X upload-exclude.txt *",
+            "composer install --no-interaction"
+        ]
+    },
+    "clean": {
+        "by": [
+            "rm -f *.zip *.tgz"
+        ]
+    }
+}

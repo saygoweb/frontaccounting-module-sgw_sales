@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - 'feature/**'
+      - 'fix/**'
+      - 'bug/**'
+      - 'issue/**'
+  pull_request:
+  workflow_dispatch:
+
+# A second push to the same branch makes the first run's answer irrelevant, and
+# each run builds an image and a database.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both gate. 7.4 is the oldest Anorm 3 supports and what composer.json
+        # resolves the lock against; 8.3 is current. slug because a compose
+        # project name cannot contain a dot.
+        include:
+          - php: '7.4'
+            slug: '74'
+          - php: '8.3'
+            slug: '83'
+
+    env:
+      PHP_VERSION: ${{ matrix.php }}
+      # The workflow runs one stack per job; fixed ports are free on a runner.
+      HTTP_PORT: '8110'
+      DB_PORT: '3330'
+      COMPOSE_PROJECT_NAME: fa-sgw-sales-ci-${{ matrix.slug }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Everything below goes through the same CLI a developer uses, so a green
+      # run here means `docker/fa-sgw-sales ci` is green on a laptop too.
+      - name: Build and boot the stack
+        run: docker/fa-sgw-sales up --build
+
+      - name: Lint
+        run: docker/fa-sgw-sales lint
+
+      - name: Analyze
+        run: docker/fa-sgw-sales analyze
+
+      - name: Test
+        run: docker/fa-sgw-sales test
+
+      - name: Container logs
+        if: failure()
+        run: |
+          docker/fa-sgw-sales logs app --tail 300
+          docker/fa-sgw-sales logs errors || true
+
+      - name: Tear down
+        if: always()
+        run: docker/fa-sgw-sales destroy --yes
