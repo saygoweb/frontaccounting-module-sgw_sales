@@ -4,20 +4,20 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5fc6432590d7d0b87875999e168ba8f3",
+    "content-hash": "a2c6533c6c8b6a01075e2dd8aa3478ed",
     "packages": [
         {
             "name": "saygoweb/anorm",
-            "version": "v3.2.0",
+            "version": "v3.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/saygoweb/anorm.git",
-                "reference": "be18aead7bd2a36c1b63859ba3f2178a6a421dd5"
+                "reference": "c8ede3ff3f1002983353ea298976bd8579344c56"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/saygoweb/anorm/zipball/be18aead7bd2a36c1b63859ba3f2178a6a421dd5",
-                "reference": "be18aead7bd2a36c1b63859ba3f2178a6a421dd5",
+                "url": "https://api.github.com/repos/saygoweb/anorm/zipball/c8ede3ff3f1002983353ea298976bd8579344c56",
+                "reference": "c8ede3ff3f1002983353ea298976bd8579344c56",
                 "shasum": ""
             },
             "require": {
@@ -54,9 +54,9 @@
             "description": "Another ORM for PHP",
             "support": {
                 "issues": "https://github.com/saygoweb/anorm/issues",
-                "source": "https://github.com/saygoweb/anorm/tree/v3.2.0"
+                "source": "https://github.com/saygoweb/anorm/tree/v3.2.1"
             },
-            "time": "2026-09-20T02:55:36+00:00"
+            "time": "2026-09-21T03:10:05+00:00"
         },
         {
             "name": "wp-cli/php-cli-tools",

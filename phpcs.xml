@@ -12,6 +12,7 @@
     <file>includes/common</file>
     <file>includes/controller</file>
     <file>includes/db</file>
+    <file>includes/service</file>
     <file>tests</file>
 
     <!-- FrontAccounting's own fixture config, copied from FA and formatted like

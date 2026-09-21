@@ -2,7 +2,10 @@
 
 namespace SGW_Sales\Tests\Http;
 
+use Anorm\Anorm;
 use PHPUnit\Framework\TestCase;
+use SGW_Sales\db\DB;
+use SGW_Sales\db\SalesRecurringModel;
 
 /**
  * A logged-in FrontAccounting session over HTTP, at FA_URL.
@@ -78,6 +81,59 @@ abstract class HttpTestCase extends TestCase
         $status = curl_getinfo($c, CURLINFO_HTTP_CODE);
         curl_close($c);
         return [$status, (string) $body];
+    }
+
+    /** Anorm, connected the way hooks.php connects it. */
+    protected function connectDb(): void
+    {
+        if (!getenv('FA_DB_HOST')) {
+            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through docker/fa-sgw-sales test');
+        }
+        Anorm::connect(
+            Anorm::DEFAULT,
+            'mysql:host=' . getenv('FA_DB_HOST') . ';dbname=' . getenv('FA_DB_NAME'),
+            getenv('FA_DB_USER'),
+            getenv('FA_DB_PASSWORD')
+        );
+        DB::init(getenv('FA_DB_PREFIX') !== false ? getenv('FA_DB_PREFIX') : '0_');
+    }
+
+    /** A sales order with no recurrence yet, from whatever dataset is loaded. */
+    protected function unrecurredOrder(): int
+    {
+        $orderNo = Anorm::pdo()->query(
+            'SELECT so.order_no FROM ' . DB::prefix('sales_orders') . ' AS so'
+            . ' WHERE so.trans_type=' . ST_SALESORDER
+            . ' AND so.order_no NOT IN (SELECT trans_no FROM ' . DB::prefix('sales_recurring') . ')'
+            . ' ORDER BY so.order_no DESC LIMIT 1'
+        )->fetchColumn();
+        if (!$orderNo) {
+            $this->markTestSkipped('the loaded dataset has no sales order to hang a recurrence on');
+        }
+        return (int) $orderNo;
+    }
+
+    /** A recurrence on $orderNo, monthly on the 1st and never yet invoiced: due now. */
+    protected function dueMonthly(int $orderNo): SalesRecurringModel
+    {
+        $recurrence = new SalesRecurringModel();
+        $recurrence->transNo = $orderNo;
+        $recurrence->dtStart = '2016-07-01';
+        $recurrence->auto = 0;
+        $recurrence->repeats = SalesRecurringModel::REPEAT_MONTHLY;
+        $recurrence->every = 1;
+        $recurrence->occur = '1';
+        $recurrence->write();
+        return $recurrence;
+    }
+
+    protected function invoiceCount(int $orderNo): int
+    {
+        $statement = Anorm::pdo()->prepare(
+            'SELECT COUNT(*) FROM ' . DB::prefix('debtor_trans') . ' WHERE type=' . ST_SALESINVOICE . ' AND order_=:order'
+        );
+        $statement->execute([':order' => $orderNo]);
+        return (int) $statement->fetchColumn();
     }
 
     protected function assertRendered(int $status, string $html): void

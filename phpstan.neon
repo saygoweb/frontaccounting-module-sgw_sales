@@ -13,6 +13,7 @@ parameters:
         - includes/common
         - includes/controller
         - includes/db
+        - includes/service
 
     # FrontAccounting itself, two directories up: this module lives at
     # modules/sgw_sales inside an FA tree, and that is equally true inside the

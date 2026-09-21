@@ -36,6 +36,27 @@ A module for Front Accounting that provides recurring invoicing for sales orders
 Anorm is loaded from this module's own `vendor/`, into the same PHP process as every other
 extension. Another module that uses Anorm has to be on 3.x as well: only one `Anorm\` can be loaded.
 
+## Calling it from other code ##
+
+Generation is not tied to its page. `SGW_Sales\service\RecurringInvoiceService` is what the
+*Generate Recurring Invoices* page calls, and what an API should call:
+
+    $service = new \SGW_Sales\service\RecurringInvoiceService();
+
+    foreach ($service->due() as $order) {          // due(true) includes those not yet due
+        $result = $service->generate((int) $order->orderNo);   // generate($orderNo, $email = true)
+        // $result->invoiceNo, ->comment, ->dtNext, ->emailed
+    }
+
+It needs FrontAccounting booted with a user logged in - the invoice is written by FrontAccounting's
+own `Cart`, which is what posts to the ledger - and this module's `hooks.php` loaded, which connects
+Anorm. It asks for the FrontAccounting includes it needs itself. `generate()` throws
+`RecurrenceNotFound` for an order with no recurrence and `RecurrenceEnded` for one whose end date has
+passed; an order that is merely not yet due is invoiced, as the page's *Show All* allows.
+
+The date arithmetic is `SGW_Sales\service\RecurrenceSchedule`: static, and free of FrontAccounting
+and the database.
+
 ## Development ##
 
 There is a docker stack that supplies FrontAccounting, PHP and MariaDB, so nothing but docker is

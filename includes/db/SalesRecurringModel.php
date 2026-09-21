@@ -16,7 +16,18 @@ class SalesRecurringModel extends Model {
 		parent::__construct($pdo, DataMapper::createByClass($pdo, $this, DB::tablePrefix()));
 	}
 
-	/** @return SalesRecurringModel */
+	/** @return SalesRecurringModel|null null when the order has no recurrence */
+	public static function findByTransNo($transNo) {
+		$model = DataMapper::find(SalesRecurringModel::class, Anorm::pdo())
+			->where('trans_no=:transNo', [':transNo' => $transNo])
+			->one();
+		return $model ?: null;
+	}
+
+	/**
+	 * @return SalesRecurringModel
+	 * @throws \Exception when the order has no recurrence
+	 */
 	public static function readByTransNo($transNo) {
 		return DataMapper::find(SalesRecurringModel::class, Anorm::pdo())
 			->where('trans_no=:transNo', [':transNo' => $transNo])

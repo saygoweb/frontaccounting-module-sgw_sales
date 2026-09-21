@@ -84,15 +84,19 @@ recurrence on, which is what the `db` and `http` test suites look for.
 
 | suite | needs | what it covers |
 | --- | --- | --- |
-| `unit` | nothing | the recurrence date arithmetic; what Anorm derives from the models |
-| `db` | `FA_DB_*` | the models against MariaDB through Anorm, each test rolled back |
-| `http` | `FA_URL`, `FA_DB_*` | the pages under a logged-in FrontAccounting, and generating an invoice end to end |
+| `unit` | nothing | the recurrence date arithmetic; what Anorm derives from the models; which orders the form ticked |
+| `db` | `FA_DB_*` | the models against MariaDB through Anorm, and `RecurringInvoiceService` with FrontAccounting cut away, each test rolled back |
+| `http` | `FA_URL`, `FA_DB_*` | the pages under a logged-in FrontAccounting; an invoice generated end to end through the page, and through the service with no page behind it |
 
     docker/fa-sgw-sales test --testsuite unit
     docker/fa-sgw-sales test --filter GenerateInvoiceTest
 
-`GenerateInvoiceTest` is not rolled back — FrontAccounting writes on its own
-connection — so each run leaves one more invoice behind. `db reset` starts over.
+`GenerateInvoiceTest` and `ServiceWithoutAPageTest` are not rolled back —
+FrontAccounting writes on its own connection — so each run leaves invoices
+behind. `db reset` starts over. `ServiceWithoutAPageTest` copies
+`tests/Http/fixtures/service-probe.php` to `test-service-probe.php` in the
+module's root for the length of each test, because Apache serves nothing under
+`tests/`; it is gitignored in case a run dies before removing it.
 
 ## Packaging
 

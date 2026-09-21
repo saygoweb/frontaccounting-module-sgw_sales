@@ -2,8 +2,6 @@
 
 namespace SGW_Sales\Tests\Http;
 
-use Anorm\Anorm;
-use SGW_Sales\db\DB;
 use SGW_Sales\db\SalesRecurringModel;
 
 /**
@@ -24,16 +22,7 @@ class GenerateInvoiceTest extends HttpTestCase
     protected function setUp(): void
     {
         parent::setUp();
-        if (!getenv('FA_DB_HOST')) {
-            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through docker/fa-sgw-sales test');
-        }
-        Anorm::connect(
-            Anorm::DEFAULT,
-            'mysql:host=' . getenv('FA_DB_HOST') . ';dbname=' . getenv('FA_DB_NAME'),
-            getenv('FA_DB_USER'),
-            getenv('FA_DB_PASSWORD')
-        );
-        DB::init(getenv('FA_DB_PREFIX') !== false ? getenv('FA_DB_PREFIX') : '0_');
+        $this->connectDb();
     }
 
     protected function tearDown(): void
@@ -43,37 +32,11 @@ class GenerateInvoiceTest extends HttpTestCase
         }
     }
 
-    private function invoiceCount(string $orderNo): int
-    {
-        $statement = Anorm::pdo()->prepare(
-            'SELECT COUNT(*) FROM ' . DB::prefix('debtor_trans') . ' WHERE type=' . ST_SALESINVOICE . ' AND order_=:order'
-        );
-        $statement->execute([':order' => $orderNo]);
-        return (int) $statement->fetchColumn();
-    }
-
     public function testDueOrderIsInvoicedAndMovesOn(): void
     {
-        $orderNo = Anorm::pdo()->query(
-            'SELECT so.order_no FROM ' . DB::prefix('sales_orders') . ' AS so'
-            . ' WHERE so.trans_type=' . ST_SALESORDER
-            . ' AND so.order_no NOT IN (SELECT trans_no FROM ' . DB::prefix('sales_recurring') . ')'
-            . ' ORDER BY so.order_no DESC LIMIT 1'
-        )->fetchColumn();
-        if (!$orderNo) {
-            $this->markTestSkipped('the loaded dataset has no sales order to hang a recurrence on');
-        }
+        $orderNo = $this->unrecurredOrder();
         $before = $this->invoiceCount($orderNo);
-
-        // Monthly on the 1st, never yet invoiced: due now.
-        $this->recurrence = new SalesRecurringModel();
-        $this->recurrence->transNo = $orderNo;
-        $this->recurrence->dtStart = '2016-07-01';
-        $this->recurrence->auto = 0;
-        $this->recurrence->repeats = SalesRecurringModel::REPEAT_MONTHLY;
-        $this->recurrence->every = 1;
-        $this->recurrence->occur = '1';
-        $this->recurrence->write();
+        $this->recurrence = $this->dueMonthly($orderNo);
 
         [$status, $html] = $this->request(self::PAGE);
         $this->assertRendered($status, $html);
@@ -91,7 +54,6 @@ class GenerateInvoiceTest extends HttpTestCase
 
         // The 1st of next month, whatever today is.
         $expected = (new \DateTime('first day of next month'))->format('Y-m-d');
-        $after = SalesRecurringModel::readByTransNo($orderNo);
-        $this->assertSame($expected, $after->dtNext);
+        $this->assertSame($expected, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
     }
 }
