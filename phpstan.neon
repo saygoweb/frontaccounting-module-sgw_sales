@@ -1,0 +1,26 @@
+parameters:
+    level: 0
+
+    # FrontAccounting is a .inc codebase. Without this, scanDirectories below
+    # finds almost none of it and every FA function is "function not found".
+    fileExtensions:
+        - php
+        - inc
+
+    # The namespaced code. The pages at the root are FrontAccounting page
+    # scripts: globals in, HTML out, nothing here to hold them to.
+    paths:
+        - includes/common
+        - includes/controller
+        - includes/db
+
+    # FrontAccounting itself, two directories up: this module lives at
+    # modules/sgw_sales inside an FA tree, and that is equally true inside the
+    # docker stack, where the checkout is bind-mounted at
+    # /var/www/html/modules/sgw_sales. Only the areas this module calls into are
+    # listed, so a missing directory is a real signal rather than noise.
+    scanDirectories:
+        - ../../admin/db
+        - ../../includes
+        - ../../sales
+        - ../../reporting

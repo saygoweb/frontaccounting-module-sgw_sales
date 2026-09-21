@@ -9,8 +9,12 @@ use SGW_Sales\db\DB;
 
 class GenerateRecurringModel extends Model {
 
-	public function __construct() {
-		$pdo = Anorm::pdo();
+	/**
+	 * @param \PDO|null $pdo Anorm's QueryBuilder gives every model it makes the
+	 *   connection it was made with; without one the default connection is used.
+	 */
+	public function __construct(?\PDO $pdo = null) {
+		$pdo = $pdo ?: Anorm::pdo();
 		parent::__construct($pdo, DataMapper::createByClass($pdo, $this, DB::tablePrefix()));
 	}
 

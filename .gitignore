@@ -2,5 +2,14 @@
 /node_modules/
 /_frontaccounting
 /.vscode
+/.claude/
 *.tgz
 *.zip
+docker/.env
+tmp/
+
+# phpmake run logs
+log/
+
+# phpunit's test-order cache
+.phpunit.result.cache
