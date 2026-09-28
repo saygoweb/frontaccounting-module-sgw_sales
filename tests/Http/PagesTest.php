@@ -31,7 +31,7 @@ class PagesTest extends HttpTestCase
 
     public function testMenuOffersTheModule(): void
     {
-        // Needs the role to hold the module's security areas; `fa-sgw-sales db load` grants them.
+        // Needs the role to hold the module's security areas; `fa-ci-grant --role 2 --module sgw_sales` grants them (tools/ci.sh).
         [$status, $html] = $this->request('/index.php?application=orders');
 
         $this->assertRendered($status, $html);

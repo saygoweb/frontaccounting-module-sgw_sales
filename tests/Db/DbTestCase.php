@@ -22,7 +22,7 @@ abstract class DbTestCase extends TestCase
     {
         $host = getenv('FA_DB_HOST');
         if (!$host) {
-            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through docker/fa-sgw-sales test');
+            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)');
         }
         $this->prefix = getenv('FA_DB_PREFIX') !== false ? getenv('FA_DB_PREFIX') : '0_';
 

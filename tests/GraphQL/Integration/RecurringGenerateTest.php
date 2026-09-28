@@ -3,6 +3,7 @@
 namespace SGW_Sales\Tests\GraphQL\Integration;
 
 use FA\GraphQL\Extension\ExtensionContext;
+use FA\GraphQL\Fa\Bootstrap;
 use FA\GraphQL\Tests\Support\MailCatcher;
 use SGW_Sales\GraphQL\RecurringGeneration;
 use SGW_Sales\service\GeneratedInvoice;
@@ -390,10 +391,11 @@ class RecurringGenerateTest extends RecurringGenerationTestCase
         $orderNo = $this->recurringOrder(date('Y-m-01'), 1);
         $role = "role = 'GraphQL Orders'";
         $before = (string) $this->pdo()->query("SELECT areas FROM 0_security_roles WHERE $role")->fetchColumn();
-        $this->assertStringContainsString('91236', $before, 'the role holds SA_GRAPHQL');
+        $area = (string) $this->graphqlArea();
+        $this->assertStringContainsString($area, $before, 'the role holds SA_GRAPHQL');
         try {
             $this->pdo()->prepare("UPDATE 0_security_roles SET areas = ? WHERE $role")
-                ->execute(['3075;3076;3077;91236']);
+                ->execute(["3075;3076;3077;$area"]);
             $this->enterAs('apiorders');
 
             $refused = $this->generate([
@@ -417,6 +419,24 @@ class RecurringGenerateTest extends RecurringGenerationTestCase
             $before,
             (string) $this->pdo()->query("SELECT areas FROM 0_security_roles WHERE $role")->fetchColumn()
         );
+    }
+
+    /**
+     * SA_GRAPHQL as FrontAccounting numbers it for graphql's extension id:
+     * (id << 16) | (100 << 8) | 100. Extension ids follow activation order, which
+     * differs between this job (graphql activated first here) and graphql's own
+     * CI (sgw_sales activated first there) — see tools/ci.sh / tools/ci-graphql.sh.
+     */
+    private function graphqlArea(): int
+    {
+        $installed_extensions = [];
+        include Bootstrap::defaultRoot() . '/company/0/installed_extensions.php';
+        foreach ($installed_extensions as $id => $ext) {
+            if ($ext['package'] === 'graphql') {
+                return ($id << 16) | (100 << 8) | 100;
+            }
+        }
+        throw new \RuntimeException('graphql is not registered in company/0/installed_extensions.php');
     }
 
     /**
