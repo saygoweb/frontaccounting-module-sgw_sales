@@ -103,8 +103,8 @@ final class RecurrenceParticipant implements SalesOrderParticipant
 
     /**
      * What the `recurring` field shows: the schedule as it was before this request
-     * deleted or closed the order (a delete returns the order as it was), otherwise
-     * the schedule now.
+     * deleted or closed the order (a delete returns the order as it was) — unless a
+     * later write in the request replaced it — otherwise the schedule now.
      *
      * @return array<string, mixed>|null
      */
@@ -142,6 +142,9 @@ final class RecurrenceParticipant implements SalesOrderParticipant
     {
         $this->assertWritable('recurring');
         $c = self::toColumns($recurrence);
+        // A snapshot lasts until the next write to its order in this request
+        // (Checkpoint B M-1): after it, the field shows what was written.
+        unset($this->before[$orderNo]);
         $existing = db_fetch(db_query(
             'SELECT * FROM ' . TB_PREF . 'sales_recurring WHERE trans_no = ' . db_escape($orderNo) . ' FOR UPDATE',
             'could not read the recurring schedule'

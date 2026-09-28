@@ -220,6 +220,28 @@ class SalesOrderRecurrenceTest extends ExtensionTestCase
     }
 
     /**
+     * Checkpoint B M-1: one request closes an order, then gives it a new schedule. The
+     * close's snapshot is of the schedule before the close; the update's response
+     * must show what the update wrote, not that snapshot.
+     */
+    public function testAScheduleWrittenAfterACloseInOneRequestReadsAsWritten(): void
+    {
+        $orderNo = $this->createOrder(['recurring' => $this->monthly()]);
+        $this->deliver($orderNo, [$this->lineIds($orderNo)[0] => 1.0]);
+        $outcome = ServiceCall::run(function () use ($orderNo): string {
+            return $this->service()->delete($orderNo);
+        });
+        $this->assertSame(SalesOrderService::CLOSED, $outcome);
+
+        $this->update($orderNo, ['recurring' => $this->monthly(['day' => 20])]);
+
+        $type = $this->container->get(SalesOrderType::class);
+        $schedule = ($type->getField('recurring')->resolveFn)(['id' => (string) $orderNo], [], $this->container);
+        $this->assertSame(20, $schedule['day']);
+        $this->assertNull($schedule['end']);
+    }
+
+    /**
      * Release 4 spec §3.3: with sgw_sales not active for the company, `recurring`
      * is not in that company's schema — not BAD_INPUT and null as in Release 2.
      * Simulated in-process: install_hooks() puts an extension in $Hooks only when it
