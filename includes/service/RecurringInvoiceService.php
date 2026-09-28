@@ -41,11 +41,13 @@ class RecurringInvoiceService
      * recurrence on to the next date after it.
      *
      * @param bool $allowEarly invoice an order that is not yet due (the page's
-     *   "Show All", where a person picks it); never from the API
+     *   "Show All", where a person picks it) for its next due period, dated
+     *   $invoiceDate; never from the API
      * @throws RecurrenceNotFound the order has no recurrence, or no longer exists
      * @throws RecurrenceEnded the recurrence has ended by $invoiceDate, or the order is closed
      * @throws RecurrenceNotDue not due on $invoiceDate (and not $allowEarly), or the
-     *   period already billed (early generation bills the current period once)
+     *   period already billed (early generation bills the next due period - from
+     *   dt_next, or the start - once: not when a period after the date is billed)
      * @throws GenerationRefused a check refused it; nothing was written
      */
     public function generate(int $orderNo, \DateTimeInterface $invoiceDate, bool $allowEarly = false): GeneratedInvoice
@@ -77,14 +79,31 @@ class RecurringInvoiceService
                     . " 'Every' must be from 1 to 127. Correct it on the order."
                 );
             }
-            if (!$allowEarly && !self::isDue($recurrence, $ymd)) {
+            $due = self::isDue($recurrence, $ymd);
+            if (!$allowEarly && !$due) {
                 throw new RecurrenceNotDue(
                     "Sales order $orderNo is not due on $ymd: next due " . ($recurrence->dtNext ?: $recurrence->dtStart)
                 );
             }
+            // The period billed: the date's own, when due; billed early, the next due
+            // period - the one starting at dt_next (the start, never generated) - as a
+            // run on that date would bill it. Never one computed from the date asked:
+            // with every >= 2 that overlaps a period already billed.
+            $period = $date;
+            if (!$due) {
+                $period = new \DateTime($recurrence->dtNext ?: $recurrence->dtStart);
+                // Early once: a period starting after the date is billed already.
+                $billedFrom = $recurrence->dtNext ? RecurrenceSchedule::periodsBefore($recurrence, $period) : null;
+                if ($billedFrom && $billedFrom > $date) {
+                    throw new RecurrenceNotDue(
+                        "Sales order $orderNo is already invoiced ahead, for the period from "
+                        . $billedFrom->format('Y-m-d')
+                    );
+                }
+            }
             // The period billed must be one not billed yet, and the schedule must move
             // past it: never the same period twice, never dt_next backwards.
-            $next = RecurrenceSchedule::nextDateAfter($recurrence, $date)->format('Y-m-d');
+            $next = RecurrenceSchedule::nextDateAfter($recurrence, $period)->format('Y-m-d');
             if ($recurrence->dtNext && $next <= $recurrence->dtNext) {
                 throw new RecurrenceNotDue(
                     "Sales order $orderNo is already invoiced for the period before " . $recurrence->dtNext
@@ -100,7 +119,7 @@ class RecurringInvoiceService
                 throw new GenerationRefused("$ymd is out of the fiscal year or closed for further data entry.", 'date');
             }
 
-            $comment = RecurrenceSchedule::comment($recurrence, $date);
+            $comment = RecurrenceSchedule::comment($recurrence, $period);
             $deliveryNo = $this->writeDelivery($orderNo, $faDate);
             $invoiceNo = $this->writeInvoice($deliveryNo, $faDate, $comment);
 

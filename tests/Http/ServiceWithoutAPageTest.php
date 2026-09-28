@@ -236,23 +236,94 @@ class ServiceWithoutAPageTest extends HttpTestCase
     }
 
     /**
-     * Checkpoint C M-5: early generation (the page's Show All) bills the current
-     * period early, once. Asked again, the period is already billed.
+     * Checkpoint C M-5, re-review N-3: early generation (the page's Show All) bills
+     * the next due period - the one starting at dt_next - early, once. Asked again,
+     * a period starting after the date is already billed, so it is refused.
      */
-    public function testEarlyGenerationBillsTheCurrentPeriodOnceOnly(): void
+    public function testEarlyGenerationBillsTheNextDuePeriodOnceOnly(): void
     {
         $orderNo = $this->unrecurredOrder();
         $this->recurrence = $this->dueMonthly($orderNo);
-        $first = $this->probe($orderNo, $this->today(), ['early' => 1]);
-        $this->assertArrayNotHasKey('error', $first, $first['error'] ?? '');
+        $due = $this->probe($orderNo, $this->today(), ['early' => 1]);
+        $this->assertArrayNotHasKey('error', $due, $due['error'] ?? '');
+        $nextMonth = new \DateTime('first day of next month');
+        $this->assertSame($nextMonth->format('Y-m-d'), $due['generated']['dtNext']);
+
+        $early = $this->probe($orderNo, $this->today(), ['early' => 1]);
+
+        $this->assertArrayNotHasKey('error', $early, $early['error'] ?? '');
+        $this->assertStringStartsWith(
+            'Invoice for period ' . $nextMonth->format('j F Y') . ' to ',
+            $early['generated']['comment']
+        );
+        $inTwoMonths = (new \DateTime('first day of +2 months'))->format('Y-m-d');
+        $this->assertSame($inTwoMonths, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
         $invoices = $this->invoiceCount($orderNo);
-        $next = SalesRecurringModel::readByTransNo($orderNo)->dtNext;
 
         $again = $this->probe($orderNo, $this->today(), ['early' => 1]);
 
         $this->assertSame('SGW_Sales\service\RecurrenceNotDue', $again['errorClass'] ?? null, $again['error'] ?? '');
         $this->assertSame($invoices, $this->invoiceCount($orderNo));
-        $this->assertSame($next, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+        $this->assertSame($inTwoMonths, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /**
+     * Checkpoint C re-review N-3: every 2 months, billed last month (so dt_next is
+     * next month, and this month is paid). Show All billed from this month - this
+     * month twice - and moved the schedule onto the other months. It bills from
+     * dt_next, once, and the rhythm stays.
+     */
+    public function testEarlyGenerationEveryTwoMonthsBillsFromDtNextNotFromTheDate(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $lastMonth = (new \DateTime('first day of last month'))->format('Y-m-d');
+        $nextMonth = new \DateTime('first day of next month');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, $lastMonth);
+        $this->recurrence->every = 2;
+        $this->recurrence->write();
+        $billed = $this->probe($orderNo, $lastMonth);
+        $this->assertArrayNotHasKey('error', $billed, $billed['error'] ?? '');
+        $this->assertSame($nextMonth->format('Y-m-d'), $billed['generated']['dtNext']);
+
+        $early = $this->probe($orderNo, $this->today(), ['early' => 1]);
+
+        $this->assertArrayNotHasKey('error', $early, $early['error'] ?? '');
+        $to = (new \DateTime('last day of +2 months'))->format('j F Y');
+        $this->assertSame(
+            'Invoice for period ' . $nextMonth->format('j F Y') . ' to ' . $to,
+            $early['generated']['comment']
+        );
+        $inThreeMonths = (new \DateTime('first day of +3 months'))->format('Y-m-d');
+        $this->assertSame($inThreeMonths, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+        $invoices = $this->invoiceCount($orderNo);
+
+        $again = $this->probe($orderNo, $this->today(), ['early' => 1]);
+
+        $this->assertSame('SGW_Sales\service\RecurrenceNotDue', $again['errorClass'] ?? null, $again['error'] ?? '');
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($inThreeMonths, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /** Checkpoint C re-review N-3: a never-generated schedule billed early bills from its start. */
+    public function testEarlyGenerationOfANeverGeneratedScheduleBillsFromItsStart(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $nextMonth = new \DateTime('first day of next month');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, null);
+        $this->recurrence->dtStart = $nextMonth->format('Y-m-d');
+        $this->recurrence->write();
+
+        $early = $this->probe($orderNo, $this->today(), ['early' => 1]);
+
+        $this->assertArrayNotHasKey('error', $early, $early['error'] ?? '');
+        $this->assertStringStartsWith(
+            'Invoice for period ' . $nextMonth->format('j F Y') . ' to ',
+            $early['generated']['comment']
+        );
+        $this->assertSame(
+            (new \DateTime('first day of +2 months'))->format('Y-m-d'),
+            SalesRecurringModel::readByTransNo($orderNo)->dtNext
+        );
     }
 
     /**

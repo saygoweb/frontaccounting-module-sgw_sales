@@ -7,6 +7,7 @@ use FA\GraphQL\Error\FaRejected;
 use FA\GraphQL\Extension\SalesOrderParticipant;
 use FA\GraphQL\Fa\CompanyContext;
 use FA\GraphQL\Fa\DateConversion;
+use SGW_Sales\service\RecurrenceSchedule;
 use SGW_Sales\service\RecurringInvoiceService;
 
 /**
@@ -141,7 +142,8 @@ final class RecurrenceParticipant implements SalesOrderParticipant
     }
 
     /**
-     * Set or replace an order's schedule. dt_next is kept unless the rhythm changes.
+     * Set or replace an order's schedule. dt_next is kept unless the rhythm changes;
+     * then it moves on to the new rhythm's first date (nextAfterRhythmChange()).
      *
      * @param array<string, mixed> $recurrence a RecurrenceInput
      */
@@ -174,15 +176,41 @@ final class RecurrenceParticipant implements SalesOrderParticipant
             || $existing['repeats'] !== $c['repeats']
             || (int) $existing['every'] !== $c['every']
             || (string) $existing['occur'] !== $c['occur'];
+        $next = self::nextAfterRhythmChange($existing['dt_next'] ?? null, $c);
         db_query(
             'UPDATE ' . TB_PREF . 'sales_recurring SET dt_start = ' . db_escape($c['dt_start'])
             . ', dt_end = ' . self::sqlDate($c['dt_end'])
             . ', auto = ' . $c['auto'] . ', every = ' . $c['every']
             . ', repeats = ' . db_escape($c['repeats']) . ', occur = ' . db_escape($c['occur'])
-            . ($rhythmChanged ? ', dt_next = NULL' : '')
+            . ($rhythmChanged ? ', dt_next = ' . self::sqlDate($next) : '')
             . ' WHERE trans_no = ' . db_escape($orderNo),
             'could not update the recurring schedule'
         );
+    }
+
+    /**
+     * dt_next for a schedule whose rhythm (start, repeats, every, day) changes to $c.
+     *
+     * dt_next is where the billed periods end: everything before it is paid. It
+     * becomes the new rhythm's first date on or after the old dt_next - or on or
+     * after the new start, when that is later - so it never moves back: a period
+     * already billed is never due again (generate() bills only from dt_next on, and
+     * only a period that moves dt_next past it). The days between the old dt_next
+     * and the new one are left unbilled rather than billed twice (Checkpoint C
+     * re-review P-2). A schedule never generated (dt_next NULL) stays NULL: the
+     * generation service starts it from dt_start.
+     *
+     * @param array{dt_start: string, repeats: string, every: int, occur: string} $c
+     */
+    public static function nextAfterRhythmChange(?string $oldNext, array $c): ?string
+    {
+        if ($oldNext === null || $oldNext === '' || $oldNext === '0000-00-00') {
+            return null;
+        }
+        $from = max($oldNext, $c['dt_start']);
+        $schedule = (object) ['repeats' => $c['repeats'], 'every' => $c['every'], 'occur' => $c['occur']];
+
+        return RecurrenceSchedule::dateAfter($schedule, new \DateTime($from))->format('Y-m-d');
     }
 
     public function delete(int $orderNo): void

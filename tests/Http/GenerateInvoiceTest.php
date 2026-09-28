@@ -62,7 +62,9 @@ class GenerateInvoiceTest extends HttpTestCase
     {
         $orderNo = $this->unrecurredOrder();
         $before = $this->invoiceCount($orderNo);
-        $this->recurrence = $this->monthlyOnThe1st($orderNo, (new \DateTime('tomorrow'))->format('Y-m-d'));
+        // This month billed: next due on the 1st of next month.
+        $nextMonth = (new \DateTime('first day of next month'))->format('Y-m-d');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, $nextMonth);
 
         [, $html] = $this->request(self::PAGE);
         $this->assertStringNotContainsString("name='s_$orderNo'", $html, 'not due, so not listed');
@@ -88,8 +90,8 @@ class GenerateInvoiceTest extends HttpTestCase
         $this->assertStringContainsString('Generated invoice for order ' . $orderNo, $html);
         $this->assertSame($before + 1, $this->invoiceCount($orderNo));
 
-        // Checkpoint C M-5: early, once. Submitted again (a double submit, or the API
-        // alongside), the period is already billed.
+        // Checkpoint C M-5, re-review N-3: early, once - next month's period. Submitted
+        // again (a double submit), a period after today is already billed.
         [, $html] = $this->request(self::PAGE);
         [$status, $html] = $this->request(self::PAGE, [
             'show_all' => '1',

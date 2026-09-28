@@ -142,10 +142,21 @@ class SalesOrderRecurrenceTest extends ExtensionTestCase
         $this->assertSame('2030-03-01', $this->scheduleRow($orderNo)['dt_next']);
         $this->assertNotNull($this->scheduleRow($orderNo)['dt_end']);
 
-        // ...a new rhythm makes sgw_sales compute it again.
+        // ...a new rhythm moves it to the new rhythm's first date on or after it
+        // (re-review P-2), never earlier: what was billed stays billed.
         $this->update($orderNo, ['recurring' => array_merge($yearly, ['every' => 2])]);
-        $this->assertNull($this->scheduleRow($orderNo)['dt_next']);
+        $this->assertSame('2030-03-01', $this->scheduleRow($orderNo)['dt_next']);
         $this->assertSame('2', (string) $this->scheduleRow($orderNo)['every']);
+        $this->update($orderNo, ['recurring' => array_merge($yearly, ['monthDay' => '01-15'])]);
+        $this->assertSame('2031-01-15', $this->scheduleRow($orderNo)['dt_next']);
+        // A start after it: the first date on or after the start.
+        $later = array_merge($yearly, ['start' => new \DateTimeImmutable('2033-02-01'), 'monthDay' => '01-15']);
+        $this->update($orderNo, ['recurring' => $later]);
+        $this->assertSame('2034-01-15', $this->scheduleRow($orderNo)['dt_next']);
+        // Never generated: it stays for sgw_sales to compute.
+        $this->pdo()->prepare('UPDATE 0_sales_recurring SET dt_next = NULL WHERE trans_no = ?')->execute([$orderNo]);
+        $this->update($orderNo, ['recurring' => $yearly]);
+        $this->assertNull($this->scheduleRow($orderNo)['dt_next']);
     }
 
     public function testDeletingAnOrderDeletesItsSchedule(): void

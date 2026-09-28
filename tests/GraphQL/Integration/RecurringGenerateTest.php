@@ -204,6 +204,76 @@ class RecurringGenerateTest extends RecurringGenerationTestCase
         $this->assertSame($thisMonth, $this->dtNext($orderNo));
     }
 
+    /**
+     * Checkpoint C re-review N-1: closed after exactly one delivery, the line already
+     * equals what was sent, so only the close's record in the audit trail tells the
+     * order is closed.
+     */
+    public function testAnOrderClosedAfterOneDeliveryIsRefusedAsClosed(): void
+    {
+        $lastMonth = (new \DateTime('first day of last month'))->format('Y-m-d');
+        $thisMonth = date('Y-m-01');
+        $orderNo = $this->recurringOrder($lastMonth, 1);
+        $billed = $this->generate([['orderId' => (string) $orderNo, 'date' => $lastMonth]]);
+        $this->assertNull($billed['data']['recurringGenerate'][0]['error'], (string) json_encode($billed));
+        $closed = $this->graphql('mutation ($ids: [ID!]!) { salesOrderDelete(id: $ids) { id } }', [
+            'ids' => [(string) $orderNo],
+        ]);
+        $this->assertArrayNotHasKey('errors', $closed, (string) json_encode($closed['errors'] ?? null));
+        $this->assertSame([1.0], $this->quantities($orderNo), 'the close changed no quantity');
+        $this->assertSame($thisMonth, $this->dtNext($orderNo), 'the current period is due');
+        $invoices = $this->invoicesFor($orderNo);
+        $deliveries = $this->deliveriesFor($orderNo);
+
+        $result = $this->generate([['orderId' => (string) $orderNo, 'date' => $thisMonth]]);
+
+        $this->assertSame('ENDED', $result['data']['recurringGenerate'][0]['error']['code'] ?? null);
+        $this->assertStringContainsString('is closed', $result['data']['recurringGenerate'][0]['error']['message']);
+        $this->assertSame($invoices, $this->invoicesFor($orderNo));
+        $this->assertSame($deliveries, $this->deliveriesFor($orderNo));
+        $this->assertSame($thisMonth, $this->dtNext($orderNo));
+    }
+
+    /**
+     * Checkpoint C re-review P-2: a change of rhythm cleared dt_next, so the billed
+     * period was due again from the schedule's start. dt_next now moves to the new
+     * rhythm's first date on or after the old one: nothing billed is due again.
+     */
+    public function testAChangeOfRhythmDoesNotMakeABilledPeriodDueAgain(): void
+    {
+        $thisMonth = date('Y-m-01');
+        $nextMonth = (new \DateTime('first day of next month'))->format('Y-m-d');
+        $orderNo = $this->recurringOrder($thisMonth, 1);
+        $billed = $this->generate([['orderId' => (string) $orderNo, 'date' => $thisMonth]]);
+        $this->assertNull($billed['data']['recurringGenerate'][0]['error'], (string) json_encode($billed));
+        $this->assertSame($nextMonth, $this->dtNext($orderNo));
+
+        $version = $this->pdo()->prepare('SELECT version FROM 0_sales_orders WHERE trans_type = 30 AND order_no = ?');
+        $version->execute([$orderNo]);
+        $updated = $this->graphql(
+            'mutation ($in: [SalesOrderUpdateInput!]!) { salesOrderUpdate(input: $in) { id recurring { next } } }',
+            ['in' => [[
+                'id' => (string) $orderNo,
+                'version' => (int) $version->fetchColumn(),
+                'recurring' => ['start' => $thisMonth, 'repeats' => 'MONTH', 'every' => 1, 'day' => 15],
+            ]]]
+        );
+        $this->assertArrayNotHasKey('errors', $updated, (string) json_encode($updated['errors'] ?? null));
+        $next15th = date('Y-m-15', strtotime($nextMonth));
+
+        $result = $this->generate([
+            ['orderId' => (string) $orderNo, 'date' => $thisMonth],
+            ['orderId' => (string) $orderNo, 'date' => date('Y-m-d')],
+        ]);
+
+        foreach ($result['data']['recurringGenerate'] as $item) {
+            $this->assertSame('NOT_DUE', $item['error']['code'] ?? null, (string) json_encode($result));
+        }
+        $this->assertSame(1, $this->invoicesFor($orderNo));
+        $this->assertSame($next15th, $updated['data']['salesOrderUpdate'][0]['recurring']['next']);
+        $this->assertSame($next15th, $this->dtNext($orderNo));
+    }
+
     /** Checkpoint C M-4: DeliveryService's "nothing to deliver". */
     public function testAnOrderWithNothingToDeliverIsRefused(): void
     {
