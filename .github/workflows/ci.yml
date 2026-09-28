@@ -67,3 +67,60 @@ jobs:
       - name: Tear down
         if: always()
         run: docker/fa-sgw-sales destroy --yes
+
+  # The GraphQL extension (includes/GraphQL) against the FrontAccounting GraphQL
+  # module, in that module's own docker stack with this checkout mounted as its
+  # sgw_sales. The suites are phpunit-graphql.xml's, run with the module's phpunit.
+  graphql-extension:
+    name: GraphQL extension / FA ${{ matrix.fa.name }} / PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['7.4', '8.3']
+        fa:
+          - name: upstream
+            repo: https://github.com/FrontAccountingERP/FA.git
+            ref: master
+          - name: fork
+            repo: https://github.com/cambell-prince/frontaccounting.git
+            ref: master-cp
+    env:
+      PHP_VERSION: ${{ matrix.php }}
+      FA_REPO: ${{ matrix.fa.repo }}
+      FA_REF: ${{ matrix.fa.ref }}
+      COMPOSE_PROJECT_NAME: sgw-gql-${{ matrix.fa.name }}-${{ matrix.php }}
+      # The GraphQL module's branch that has the extension contract. Its Release 4
+      # PR is open; switch to main once it merges.
+      GRAPHQL_REF: feature/release-4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: sgw_sales
+      - uses: actions/checkout@v4
+        with:
+          repository: saygoweb/frontaccounting-module-graphql
+          ref: ${{ env.GRAPHQL_REF }}
+          path: graphql
+      # Before the stack boots: the bind mount replaces the image's clone and its
+      # vendor/, and FrontAccounting loads this module's hooks.php (which requires
+      # vendor/autoload.php) on every page, the stack's readiness check included.
+      - name: This checkout's own dependencies
+        working-directory: sgw_sales
+        run: docker run --rm -v "$PWD":/app -w /app composer:2 install --no-interaction --no-progress --ignore-platform-reqs
+      - name: Boot the GraphQL module's stack with this checkout mounted
+        working-directory: graphql
+        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql up --build
+      - name: The extension suites
+        working-directory: graphql
+        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql exec php vendor/bin/phpunit -c /var/www/html/modules/sgw_sales/phpunit-graphql.xml
+      - name: Container logs
+        if: failure()
+        working-directory: graphql
+        run: |
+          SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql logs app --tail 300
+          SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql logs errors || true
+      - name: Tear down
+        if: always()
+        working-directory: graphql
+        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql destroy --yes

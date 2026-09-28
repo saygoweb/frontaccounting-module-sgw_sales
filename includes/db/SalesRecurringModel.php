@@ -5,6 +5,16 @@ use Anorm\Anorm;
 use Anorm\DataMapper;
 use Anorm\Model;
 
+/**
+ * sales_recurring, through Anorm on this module's own PDO connection: the page and
+ * the generation service use it.
+ *
+ * It is not the only writer. The FrontAccounting GraphQL module's API writes the
+ * table through SGW_Sales\GraphQL\RecurrenceParticipant with FrontAccounting's
+ * db_query(), on FrontAccounting's connection, so a schedule commits and rolls back
+ * with its order (a different connection could not share that transaction). Both
+ * write the same columns with the same meanings; change them together.
+ */
 class SalesRecurringModel extends Model {
 
 	/**

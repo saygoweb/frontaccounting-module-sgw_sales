@@ -102,14 +102,33 @@ class hooks_sgw_sales extends hooks {
 	function activate_extension($company, $check_only = true)
 	{
 		global $db_connections;
-	
+
+		// In order: 1.0 creates the table (checked by its existence), 1.4 makes
+		// dt_end/dt_next nullable and trans_no unique (checked by dt_next's
+		// nullability: check_table() returns 3 while it is NOT NULL). Before 1.4 on a
+		// company with data, see sql/helpers/update_1.4-duplicates.sql.
 		$updates = array(
-			'update_1.0.sql' => array('sales_recurring')
+			'update_1.0.sql' => array('sales_recurring'),
+			'update_1.4.sql' => array('sales_recurring', 'dt_next', array('Null' => 'YES'))
 		);
-	
+
 		return $this->update_databases($company, $updates, $check_only);
 	}
-	
+
+	/*
+		The FrontAccounting GraphQL module's extension hook (its Release 4 spec
+		§2.1): it calls hook_invoke_all('graphql_extensions', $registry) for the
+		company it serves, so this runs only where that module is installed and this
+		one is active for the company. The interface check keeps this module working
+		without it: nothing of the GraphQL module is loaded otherwise.
+	*/
+	function graphql_extensions(&$registry, $opts = null)
+	{
+		if (interface_exists('FA\GraphQL\Extension\Extension')) {
+			$registry->register(new \SGW_Sales\GraphQL\SgwSalesExtension());
+		}
+	}
+
 	private function remove_menu_item(&$items, $offset) {
 		array_splice($items, $offset, 1);
 	}

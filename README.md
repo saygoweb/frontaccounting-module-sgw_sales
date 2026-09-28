@@ -30,8 +30,8 @@ A module for Front Accounting that provides recurring invoicing for sales orders
  - FrontAccounting 2.4. It is developed against the
    [cambell-prince fork](https://github.com/cambell-prince/frontaccounting) at `master-cp`.
  - `composer install --no-dev` in the module directory; the release packages ship with `vendor/` in place.
- - After activating the extension, apply `sql/update_1.4.sql` by hand (FrontAccounting only runs
-   `sql/update_1.0.sql`), and grant the *SayGo Sales* areas to a role in Setup → Access Setup.
+ - Activating the extension creates and upgrades its table (`sql/update_1.0.sql`, then
+   `sql/update_1.4.sql`). Grant the *SayGo Sales* areas to a role in Setup → Access Setup.
 
 Anorm is loaded from this module's own `vendor/`, into the same PHP process as every other
 extension. Another module that uses Anorm has to be on 3.x as well: only one `Anorm\` can be loaded.
@@ -56,6 +56,28 @@ passed; an order that is merely not yet due is invoiced, as the page's *Show All
 
 The date arithmetic is `SGW_Sales\service\RecurrenceSchedule`: static, and free of FrontAccounting
 and the database.
+
+## GraphQL API ##
+
+When the FrontAccounting GraphQL module (`modules/graphql`) is installed, this
+module adds to its API, for every company where it is active: the `recurring`
+schedule on sales orders (`salesOrderList`, `salesOrderCreate`, `salesOrderUpdate`),
+written in the order's own transaction. The code is `includes/GraphQL/`, registered
+by `hooks_sgw_sales::graphql_extensions()`. Without that module nothing of it loads.
+
+Its tests run inside the GraphQL module's docker stack, against this checkout
+(`SGW_SALES_PATH` must be absolute: the stack's compose files resolve a relative
+path against its `docker/` directory):
+
+    cd ../graphql
+    SGW_SALES_PATH=$PWD/../sgw_sales docker/fa-graphql up --recreate
+    SGW_SALES_PATH=$PWD/../sgw_sales docker/fa-graphql exec php vendor/bin/phpunit \
+        -c /var/www/html/modules/sgw_sales/phpunit-graphql.xml
+
+Activating this module now applies `sql/update_1.4.sql` as well as
+`update_1.0.sql`. A company activated before must be re-activated (Setup →
+Install/Activate Extensions) for the GraphQL API to write schedules; first check
+it for duplicate schedules with `sql/helpers/update_1.4-duplicates.sql`.
 
 ## Development ##
 
