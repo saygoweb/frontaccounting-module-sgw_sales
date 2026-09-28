@@ -3,12 +3,17 @@
 namespace SGW_Sales\service;
 
 /**
- * What RecurringInvoiceService::generate() did.
+ * What RecurringInvoiceService::generate() did: one delivery and one invoice, and
+ * the recurrence moved on. Emailing is the caller's (the page's rep107, or the
+ * API's report child), after the transaction has committed.
  */
 class GeneratedInvoice
 {
     /** @var int The sales order the invoice was raised from */
     public $orderNo;
+
+    /** @var int The delivery's transaction number */
+    public $deliveryNo;
 
     /** @var int The invoice's transaction number */
     public $invoiceNo;
@@ -19,15 +24,12 @@ class GeneratedInvoice
     /** @var string The recurrence's new dt_next, Y-m-d */
     public $dtNext;
 
-    /** @var bool Whether the invoice was handed to FrontAccounting to email */
-    public $emailed;
-
-    public function __construct(int $orderNo, int $invoiceNo, string $comment, string $dtNext, bool $emailed)
+    public function __construct(int $orderNo, int $deliveryNo, int $invoiceNo, string $comment, string $dtNext)
     {
         $this->orderNo = $orderNo;
+        $this->deliveryNo = $deliveryNo;
         $this->invoiceNo = $invoiceNo;
         $this->comment = $comment;
         $this->dtNext = $dtNext;
-        $this->emailed = $emailed;
     }
 }

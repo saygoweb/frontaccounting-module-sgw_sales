@@ -88,6 +88,27 @@ class RecurrenceSchedule
     }
 
     /**
+     * $date, 'every' periods back: where the period that ends before $date began,
+     * for a $date that is an occurrence (dt_next).
+     * @param object $model
+     * @param \DateTime $date
+     * @return \DateTime
+     */
+    public static function periodsBefore($model, $date)
+    {
+        $result = clone $date;
+        switch ($model->repeats) {
+            case SalesRecurringModel::REPEAT_YEARLY:
+                $result->sub(new \DateInterval("P" . $model->every . "Y"));
+                break;
+            case SalesRecurringModel::REPEAT_MONTHLY:
+                $result->sub(new \DateInterval("P" . $model->every . "M"));
+                break;
+        }
+        return $result;
+    }
+
+    /**
      * @param object $model
      * @return \DateTime
      */
@@ -107,7 +128,9 @@ class RecurrenceSchedule
      */
     public static function comment($model, $today)
     {
-        $startDate = new \DateTime();
+        // Midnight, as $today is: at the time of day, the 1st of a monthly period
+        // compared after itself and the comment named the month before.
+        $startDate = new \DateTime('today');
         switch ($model->repeats) {
             case SalesRecurringModel::REPEAT_YEARLY:
                 $parts = explode('-', $model->dtStart);

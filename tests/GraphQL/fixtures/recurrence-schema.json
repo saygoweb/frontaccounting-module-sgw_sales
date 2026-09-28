@@ -1,0 +1,233 @@
+{
+    "Recurrence": {
+        "name": "Recurrence",
+        "description": "An order's recurring schedule (sgw_sales).",
+        "fields": [
+            {
+                "name": "start",
+                "description": null,
+                "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                        "kind": "SCALAR",
+                        "name": "Date",
+                        "ofType": null
+                    }
+                }
+            },
+            {
+                "name": "end",
+                "description": "None: it does not end.",
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "Date",
+                    "ofType": null
+                }
+            },
+            {
+                "name": "next",
+                "description": "The next invoice date, as sgw_sales has computed it; none until it has.",
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "Date",
+                    "ofType": null
+                }
+            },
+            {
+                "name": "repeats",
+                "description": null,
+                "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                        "kind": "ENUM",
+                        "name": "RecurrenceRepeats",
+                        "ofType": null
+                    }
+                }
+            },
+            {
+                "name": "every",
+                "description": "Every this many months or years.",
+                "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                        "kind": "SCALAR",
+                        "name": "Int",
+                        "ofType": null
+                    }
+                }
+            },
+            {
+                "name": "day",
+                "description": "Monthly: the day of the month.",
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                }
+            },
+            {
+                "name": "monthDay",
+                "description": "Yearly: the date, MM-DD.",
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                }
+            },
+            {
+                "name": "auto",
+                "description": "Generated automatically.",
+                "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                        "kind": "SCALAR",
+                        "name": "Boolean",
+                        "ofType": null
+                    }
+                }
+            }
+        ]
+    },
+    "RecurrenceInput": {
+        "name": "RecurrenceInput",
+        "description": null,
+        "inputFields": [
+            {
+                "name": "start",
+                "description": null,
+                "defaultValue": null,
+                "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                        "kind": "SCALAR",
+                        "name": "Date",
+                        "ofType": null
+                    }
+                }
+            },
+            {
+                "name": "end",
+                "description": null,
+                "defaultValue": null,
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "Date",
+                    "ofType": null
+                }
+            },
+            {
+                "name": "repeats",
+                "description": null,
+                "defaultValue": null,
+                "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                        "kind": "ENUM",
+                        "name": "RecurrenceRepeats",
+                        "ofType": null
+                    }
+                }
+            },
+            {
+                "name": "every",
+                "description": null,
+                "defaultValue": null,
+                "type": {
+                    "kind": "NON_NULL",
+                    "name": null,
+                    "ofType": {
+                        "kind": "SCALAR",
+                        "name": "Int",
+                        "ofType": null
+                    }
+                }
+            },
+            {
+                "name": "day",
+                "description": "Monthly: 1 to 31.",
+                "defaultValue": null,
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "Int",
+                    "ofType": null
+                }
+            },
+            {
+                "name": "monthDay",
+                "description": "Yearly: MM-DD.",
+                "defaultValue": null,
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "String",
+                    "ofType": null
+                }
+            },
+            {
+                "name": "auto",
+                "description": null,
+                "defaultValue": "true",
+                "type": {
+                    "kind": "SCALAR",
+                    "name": "Boolean",
+                    "ofType": null
+                }
+            }
+        ]
+    },
+    "RecurrenceRepeats": {
+        "name": "RecurrenceRepeats",
+        "description": "How a recurring order repeats (sgw_sales).",
+        "enumValues": [
+            {
+                "name": "MONTH",
+                "description": null
+            },
+            {
+                "name": "YEAR",
+                "description": null
+            }
+        ]
+    },
+    "SalesOrderType.recurring": [
+        {
+            "name": "recurring",
+            "description": "The recurring schedule, when sgw_sales is active and the order has one.",
+            "type": {
+                "kind": "OBJECT",
+                "name": "Recurrence",
+                "ofType": null
+            }
+        }
+    ],
+    "SalesOrderCreateInput.recurring": [
+        {
+            "name": "recurring",
+            "description": "A recurring schedule. Needs the sgw_sales extension, active for the company.",
+            "defaultValue": null,
+            "type": {
+                "kind": "INPUT_OBJECT",
+                "name": "RecurrenceInput",
+                "ofType": null
+            }
+        }
+    ],
+    "SalesOrderUpdateInput.recurring": [
+        {
+            "name": "recurring",
+            "description": "Set or replace the recurring schedule; to end it, give an end. Needs sgw_sales.",
+            "defaultValue": null,
+            "type": {
+                "kind": "INPUT_OBJECT",
+                "name": "RecurrenceInput",
+                "ofType": null
+            }
+        }
+    ]
+}

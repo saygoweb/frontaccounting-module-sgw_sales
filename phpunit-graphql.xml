@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	The GraphQL extension's suites. They need the FrontAccounting GraphQL module
+	(modules/graphql) beside this module, its vendor/ with dev dependencies, and its
+	docker stack: run them from the module with
+	`docker/fa-graphql test-extension sgw_sales`. This module's own suites are
+	phpunit.xml's and run on its own stack.
+-->
+<phpunit
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.6/phpunit.xsd"
+	bootstrap="tests/GraphQL/bootstrap.php"
+	colors="true"
+	convertDeprecationsToExceptions="false"
+>
+	<testsuites>
+		<testsuite name="graphql-unit">
+			<directory>tests/GraphQL/Unit</directory>
+		</testsuite>
+		<testsuite name="graphql-integration">
+			<directory>tests/GraphQL/Integration</directory>
+		</testsuite>
+	</testsuites>
+</phpunit>

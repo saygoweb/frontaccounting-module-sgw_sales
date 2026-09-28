@@ -2,6 +2,7 @@
 
 use SGW\common\Mapper;
 use SGW_Sales\db\SalesRecurringModel;
+use SGW_Sales\service\RecurringInvoiceService;
 use SGW_Sales\controller\GenerateRecurring;
 /**********************************************************************
     Copyright (C) FrontAccounting, LLC.
@@ -486,8 +487,10 @@ function can_process() {
 			set_focus('dt_start');
 			return false;
 		}
-		if (!is_numeric($_POST['every'])) {
-			display_error(_("Recurring Order 'Every' must be a number."));
+		// 1 to 127, as the GraphQL API takes it (sales_recurring.every is a tinyint):
+		// 0 would never move the schedule on.
+		if (!preg_match('/^\s*\d+\s*$/', $_POST['every']) || (int) $_POST['every'] < 1 || (int) $_POST['every'] > 127) {
+			display_error(_("Recurring Order 'Every' must be a whole number from 1 to 127."));
 			set_focus('every');
 			return false;
 		}
@@ -705,7 +708,13 @@ function  handle_cancel_order()
 			$order_no = key($_SESSION['Items']->trans_no);
 			if (sales_order_has_deliveries($order_no))
 			{
+				// Closing sets each line to what was sent; the schedule ends today and the
+				// close is recorded with it, in one transaction, as the GraphQL API's close
+				// does: a closed order must not be billed again (RecurringInvoiceService).
+				begin_transaction();
 				close_sales_order($order_no);
+				RecurringInvoiceService::closeOrder($order_no, date2sql(Today()));
+				commit_transaction();
 				display_notification(_("Undelivered part of order has been cancelled as requested."), 1);
 				submenu_option(_("Select Another Sales Order for Edition"), "/sales/inquiry/sales_orders_view.php?type=".ST_SALESORDER);
 			} else {
