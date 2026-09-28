@@ -40,8 +40,9 @@ class RecurringInvoiceService
      * @param bool $allowEarly invoice an order that is not yet due (the page's
      *   "Show All", where a person picks it); never from the API
      * @throws RecurrenceNotFound the order has no recurrence, or no longer exists
-     * @throws RecurrenceEnded the recurrence has ended by $invoiceDate
-     * @throws RecurrenceNotDue not due on $invoiceDate (and not $allowEarly)
+     * @throws RecurrenceEnded the recurrence has ended by $invoiceDate, or by today
+     * @throws RecurrenceNotDue not due on $invoiceDate (and not $allowEarly), or the
+     *   period already billed (early generation bills the current period once)
      * @throws GenerationRefused a check refused it; nothing was written
      */
     public function generate(int $orderNo, \DateTimeInterface $invoiceDate, bool $allowEarly = false): GeneratedInvoice
@@ -58,12 +59,35 @@ class RecurringInvoiceService
             if ($recurrence === null || !self::salesOrderExists($orderNo)) {
                 throw new RecurrenceNotFound("Sales order $orderNo has no recurrence");
             }
-            if ($recurrence->dtEnd && $recurrence->dtEnd <= $ymd) {
+            // Ended by $invoiceDate, or by today whatever the date asked: a close ends
+            // the schedule today (the API's and the order page's), and a closed order's
+            // lines hold everything sent so far - no run may bill it again.
+            $today = date2sql(Today());
+            if ($recurrence->dtEnd && ($recurrence->dtEnd <= $ymd || $recurrence->dtEnd <= $today)) {
                 throw new RecurrenceEnded("The recurrence of sales order $orderNo ended on " . $recurrence->dtEnd);
+            }
+            if ($recurrence->every < 1 || $recurrence->every > 127) {
+                throw new GenerationRefused(
+                    "The recurrence of sales order $orderNo repeats every {$recurrence->every} periods:"
+                    . " 'Every' must be from 1 to 127. Correct it on the order."
+                );
             }
             if (!$allowEarly && !self::isDue($recurrence, $ymd)) {
                 throw new RecurrenceNotDue(
                     "Sales order $orderNo is not due on $ymd: next due " . ($recurrence->dtNext ?: $recurrence->dtStart)
+                );
+            }
+            // The period billed must be one not billed yet, and the schedule must move
+            // past it: never the same period twice, never dt_next backwards.
+            $next = RecurrenceSchedule::nextDateAfter($recurrence, $date)->format('Y-m-d');
+            if ($recurrence->dtNext && $next <= $recurrence->dtNext) {
+                throw new RecurrenceNotDue(
+                    "Sales order $orderNo is already invoiced for the period before " . $recurrence->dtNext
+                );
+            }
+            if ($next <= $ymd) {
+                throw new GenerationRefused(
+                    "The recurrence of sales order $orderNo does not move on past $ymd, so it would be billed again."
                 );
             }
             $faDate = sql2date($ymd);
@@ -75,7 +99,6 @@ class RecurringInvoiceService
             $deliveryNo = $this->writeDelivery($orderNo, $faDate);
             $invoiceNo = $this->writeInvoice($deliveryNo, $faDate, $comment);
 
-            $next = RecurrenceSchedule::nextDateAfter($recurrence, $date)->format('Y-m-d');
             db_query(
                 'UPDATE ' . TB_PREF . 'sales_recurring SET dt_next=' . db_escape($next)
                 . ' WHERE trans_no=' . db_escape($orderNo),
@@ -99,6 +122,21 @@ class RecurringInvoiceService
         global $SysPrefs;
 
         $delivery = new \Cart(ST_SALESORDER, array($orderNo), true);
+        foreach ($delivery->line_items as $item) {
+            $item->qty_done = 0;
+        }
+        // customer_delivery.php :96-111, as the GraphQL module's DeliveryService.
+        if ($delivery->count_items() == 0) {
+            throw new GenerationRefused('This order has no items. There is nothing to deliver.');
+        }
+        // A prepayment order bills against what was paid before delivery; a recurring
+        // invoice has no such payment (the module's InvoiceService refuses it too).
+        if ($delivery->is_prepaid() || (int) $delivery->payment_terms['days_before_due'] === -1) {
+            throw new GenerationRefused(
+                "Sales order $orderNo is a prepayment order:"
+                . ' recurring invoices are not generated for prepayment orders.'
+            );
+        }
         // customer_delivery.php :408-415 shows an on-hold customer no form.
         $customer = get_customer_to_order($delivery->customer_id);
         if ($customer && (int) $customer['dissallow_invoices'] === 1) {
@@ -111,7 +149,6 @@ class RecurringInvoiceService
         $delivery->due_date = $faDate;
         $delivery->reference = 'auto';
         foreach ($delivery->line_items as $item) {
-            $item->qty_done = 0;
             $item->qty_dispatched = $item->quantity;
             self::reprice($item, $delivery);
         }
@@ -213,6 +250,22 @@ class RecurringInvoiceService
                 $_POST[$key] = $value;
             }
         }
+    }
+
+    /**
+     * End $orderNo's recurrence on $ymd (Y-m-d), unless it already ends earlier: what
+     * closing the order does to its schedule. On FrontAccounting's connection, so it
+     * commits with the close; the GraphQL extension's RecurrenceParticipant::end()
+     * does the same for the API's close.
+     */
+    public static function endSchedule(int $orderNo, string $ymd): void
+    {
+        $date = db_escape($ymd);
+        db_query(
+            'UPDATE ' . TB_PREF . "sales_recurring SET dt_end=$date WHERE trans_no=" . db_escape($orderNo)
+            . " AND (dt_end IS NULL OR dt_end > $date)",
+            'The recurrence could not be ended'
+        );
     }
 
     /** Due on $ymd: next date reached, or never generated and already started. */

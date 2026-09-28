@@ -30,6 +30,7 @@ class GenerateInvoiceTest extends HttpTestCase
         if ($this->recurrence && $this->recurrence->id) {
             $this->recurrence->delete();
         }
+        parent::tearDown();
     }
 
     public function testDueOrderIsInvoicedAndMovesOn(): void
@@ -85,6 +86,20 @@ class GenerateInvoiceTest extends HttpTestCase
         ]);
         $this->assertRendered($status, $html);
         $this->assertStringContainsString('Generated invoice for order ' . $orderNo, $html);
+        $this->assertSame($before + 1, $this->invoiceCount($orderNo));
+
+        // Checkpoint C M-5: early, once. Submitted again (a double submit, or the API
+        // alongside), the period is already billed.
+        [, $html] = $this->request(self::PAGE);
+        [$status, $html] = $this->request(self::PAGE, [
+            'show_all' => '1',
+            's_' . $orderNo => '1',
+            'GenerateInvoices' => 'Generate',
+            '_token' => $this->token($html),
+        ]);
+        $this->assertSame(200, $status);
+        $this->assertStringContainsString("Sales order $orderNo was not invoiced", $html);
+        $this->assertStringNotContainsString('Generated invoice for order ' . $orderNo, $html);
         $this->assertSame($before + 1, $this->invoiceCount($orderNo));
     }
 }

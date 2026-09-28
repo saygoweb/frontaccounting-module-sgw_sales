@@ -154,4 +154,51 @@ abstract class RecurringGenerationTestCase extends ExtensionTestCase
             ['input' => $items]
         );
     }
+
+    /**
+     * A new customer of this test ($this->prefix, swept), with an email contact or
+     * none. @return array{0: int, 1: int} customer and branch id
+     */
+    protected function newCustomer(?string $email): array
+    {
+        $input = [
+            'name' => 'Recurring Test Customer',
+            'ref' => $this->prefix . substr(md5((string) mt_rand()), 0, 6),
+            'salesTypeId' => '1', 'paymentTermsId' => '3', 'creditStatusId' => '1',
+            'branch' => [
+                'salesmanId' => '1', 'salesAreaId' => '1', 'taxGroupId' => '1',
+                'locationId' => 'DEF', 'shipperId' => '1',
+            ],
+        ];
+        if ($email !== null) {
+            $input['contact'] = ['email' => $email];
+        }
+        $customer = $this->graphql(
+            'mutation ($i: [CustomerCreateInput!]!) { customerCreate(input: $i) { id branches { id } } }',
+            ['i' => [$input]]
+        );
+        $this->assertArrayNotHasKey('errors', $customer, (string) json_encode($customer['errors'] ?? null));
+
+        return [
+            (int) $customer['data']['customerCreate'][0]['id'],
+            (int) $customer['data']['customerCreate'][0]['branches'][0]['id'],
+        ];
+    }
+
+    protected function deliveriesFor(int $orderNo): int
+    {
+        $statement = $this->pdo()->prepare('SELECT COUNT(*) FROM 0_debtor_trans WHERE type = 13 AND order_ = ?');
+        $statement->execute([$orderNo]);
+        return (int) $statement->fetchColumn();
+    }
+
+    /** @return array<int, float> the order's line quantities */
+    protected function quantities(int $orderNo): array
+    {
+        $statement = $this->pdo()->prepare(
+            'SELECT quantity FROM 0_sales_order_details WHERE trans_type = 30 AND order_no = ? ORDER BY id'
+        );
+        $statement->execute([$orderNo]);
+        return array_map('floatval', $statement->fetchAll(\PDO::FETCH_COLUMN));
+    }
 }

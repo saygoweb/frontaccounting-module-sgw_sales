@@ -23,7 +23,8 @@ final class RecurringDueType extends ObjectType
                 'customerRef' => ['type' => Type::string()],
                 'next' => [
                     'type' => DateType::instance(),
-                    'description' => 'The date it fell due; none when it has never been generated.',
+                    'description' => 'The date it fell due: its next date, or its start when it has never '
+                        . 'been generated.',
                 ],
                 'repeats' => ['type' => Type::nonNull($repeats)],
                 'every' => ['type' => Type::nonNull(Type::int())],

@@ -48,8 +48,13 @@ generated, for the Generate Recurring Invoices page and for the GraphQL API
 - `generate(int $orderNo, DateTimeInterface $invoiceDate)` - delivers every line
   of the order again and invoices it, dated `$invoiceDate`, and moves the
   recurrence on, in one FrontAccounting transaction. It refuses an order that is
-  not due on that date, so running it twice bills once. It checks the fiscal year,
-  the exchange rate, a customer on hold and stock, and writes nothing if any fails.
+  not due on that date, or a period already billed, so running it twice bills once;
+  the next date must move strictly past the date billed (a schedule with `every`
+  outside 1-127 is refused). It refuses a schedule that has ended by that date or
+  by today (closing an order - on its page or through the API - ends its schedule
+  today), an order with nothing to deliver, and a prepayment order. It checks the
+  fiscal year, the exchange rate, a customer on hold and stock, and writes nothing
+  if any fails.
   It does not email: the page emails through FrontAccounting's invoice report
   afterwards; the API through its own report process.
 
@@ -70,7 +75,8 @@ loaded, which connects Anorm. It asks for the FrontAccounting includes it needs 
 `generate()` throws `RecurrenceNotFound` (no recurrence, or no such sales order),
 `RecurrenceEnded`, `RecurrenceNotDue`, or `GenerationRefused` (a check failed; `field()` names the
 input, `messages()` has FrontAccounting's reasons). The page's *Show All* lets a person pick an
-order that is not yet due; it passes `generate($orderNo, $date, true)` to invoice it early.
+order that is not yet due; it passes `generate($orderNo, $date, true)` to invoice the current
+period early - once: asked again, that period is already billed.
 
 The date arithmetic is `SGW_Sales\service\RecurrenceSchedule`: static, and free of FrontAccounting
 and the database.

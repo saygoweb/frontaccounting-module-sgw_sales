@@ -18,9 +18,6 @@ use SGW_Sales\db\SalesRecurringModel;
  */
 class ServiceWithoutAPageTest extends HttpTestCase
 {
-    /** Served from the module's root: Apache denies tests/. */
-    private const PROBE = __DIR__ . '/../../test-service-probe.php';
-
     /** @var SalesRecurringModel|null */
     private $recurrence;
 
@@ -28,33 +25,14 @@ class ServiceWithoutAPageTest extends HttpTestCase
     {
         parent::setUp();
         $this->connectDb();
-        if (!@copy(__DIR__ . '/fixtures/service-probe.php', self::PROBE)) {
-            $this->markTestSkipped('cannot write the probe into the module directory');
-        }
     }
 
     protected function tearDown(): void
     {
-        @unlink(self::PROBE);
         if ($this->recurrence && $this->recurrence->id) {
             $this->recurrence->delete();
         }
-    }
-
-    private function probe(int $orderNo, string $date, array $more = []): array
-    {
-        $query = http_build_query(['order' => $orderNo, 'date' => $date] + $more);
-        [$status, $body] = $this->request('/modules/sgw_sales/test-service-probe.php?' . $query);
-        $this->assertSame(200, $status);
-        if (!preg_match('/<<<JSON(.*)JSON>>>/s', $body, $m)) {
-            $this->fail('the probe did not answer: ' . substr(strip_tags($body), 0, 500));
-        }
-        return json_decode($m[1], true);
-    }
-
-    private function today(): string
-    {
-        return (new \DateTime('today'))->format('Y-m-d');
+        parent::tearDown();
     }
 
     public function testADueOrderIsDeliveredAndInvoicedInOneGoWithNoPageBehindIt(): void
@@ -218,5 +196,180 @@ class ServiceWithoutAPageTest extends HttpTestCase
 
         $this->assertSame('SGW_Sales\service\RecurrenceNotFound', $out['errorClass'] ?? null, $out['error'] ?? '');
         $this->assertSame($before, $this->invoiceCount($orderNo));
+    }
+
+    /**
+     * Checkpoint C C-1: a schedule with every = 0 (sgw_sales' order page let it be
+     * saved) stayed due after billing, so a second call billed the period again, and
+     * dt_next moved backwards. The next date must be strictly after the date billed.
+     */
+    public function testAScheduleThatWouldNotMoveOnIsRefusedAndNothingIsWritten(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $this->recurrence = $this->dueMonthly($orderNo);
+        $this->recurrence->every = 0;
+        $this->recurrence->write();
+        $invoices = $this->invoiceCount($orderNo);
+        $deliveries = $this->deliveryCount($orderNo);
+
+        $first = $this->probe($orderNo, $this->today());
+        $second = $this->probe($orderNo, $this->today());
+
+        foreach ([$first, $second] as $out) {
+            $this->assertSame('SGW_Sales\service\GenerationRefused', $out['errorClass'] ?? null, $out['error'] ?? '');
+            $this->assertStringContainsString("'Every'", $out['error']);
+        }
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($deliveries, $this->deliveryCount($orderNo));
+        $this->assertNull(SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+
+        // Billed before, then saved with every = 0: dt_next stays, never earlier.
+        $thisMonth = (new \DateTime('first day of this month'))->format('Y-m-d');
+        $this->recurrence->dtNext = $thisMonth;
+        $this->recurrence->write();
+
+        $out = $this->probe($orderNo, $this->today());
+
+        $this->assertSame('SGW_Sales\service\GenerationRefused', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertSame($thisMonth, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+    }
+
+    /**
+     * Checkpoint C M-5: early generation (the page's Show All) bills the current
+     * period early, once. Asked again, the period is already billed.
+     */
+    public function testEarlyGenerationBillsTheCurrentPeriodOnceOnly(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $this->recurrence = $this->dueMonthly($orderNo);
+        $first = $this->probe($orderNo, $this->today(), ['early' => 1]);
+        $this->assertArrayNotHasKey('error', $first, $first['error'] ?? '');
+        $invoices = $this->invoiceCount($orderNo);
+        $next = SalesRecurringModel::readByTransNo($orderNo)->dtNext;
+
+        $again = $this->probe($orderNo, $this->today(), ['early' => 1]);
+
+        $this->assertSame('SGW_Sales\service\RecurrenceNotDue', $again['errorClass'] ?? null, $again['error'] ?? '');
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($next, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /**
+     * Checkpoint C C-2: the API's close ends the schedule today. A billing run dated
+     * before today found it not yet ended and billed the closed order.
+     */
+    public function testAScheduleEndedTodayIsRefusedForAnEarlierDateToo(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $lastMonth = (new \DateTime('first day of last month'))->format('Y-m-d');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, $lastMonth, $this->today());
+        $invoices = $this->invoiceCount($orderNo);
+
+        $out = $this->probe($orderNo, $lastMonth);
+
+        $this->assertSame('SGW_Sales\service\RecurrenceEnded', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($lastMonth, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /** Checkpoint C M-4: customer_delivery.php's "nothing to deliver", as DeliveryService refuses it. */
+    public function testAnOrderWithNothingToDeliverIsRefused(): void
+    {
+        $orderNo = $this->copyOrder($this->unrecurredOrder());
+        Anorm::pdo()->exec(
+            'UPDATE ' . DB::prefix('sales_order_details') . ' SET quantity=0'
+            . ' WHERE trans_type=' . ST_SALESORDER . " AND order_no=$orderNo"
+        );
+        $this->recurrence = $this->dueMonthly($orderNo);
+
+        $out = $this->probe($orderNo, $this->today());
+
+        $this->assertSame('SGW_Sales\service\GenerationRefused', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertStringContainsString('nothing to deliver', $out['error']);
+        $this->assertSame(0, $this->deliveryCount($orderNo));
+        $this->assertNull(SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /** Checkpoint C M-4: a prepayment order (prepaid terms), as the module's billing refuses it. */
+    public function testAPrepaymentOrderIsRefused(): void
+    {
+        $orderNo = $this->copyOrder($this->unrecurredOrder());
+        $prepaid = Anorm::pdo()->query(
+            'SELECT terms_indicator FROM ' . DB::prefix('payment_terms') . ' WHERE days_before_due=-1 LIMIT 1'
+        )->fetchColumn();
+        if ($prepaid === false) {
+            $this->markTestSkipped('the loaded dataset has no prepayment terms');
+        }
+        Anorm::pdo()->exec(
+            'UPDATE ' . DB::prefix('sales_orders') . ' SET payment_terms=' . (int) $prepaid . ', prep_amount=1'
+            . ' WHERE trans_type=' . ST_SALESORDER . " AND order_no=$orderNo"
+        );
+        $this->recurrence = $this->dueMonthly($orderNo);
+
+        $out = $this->probe($orderNo, $this->today());
+
+        $this->assertSame('SGW_Sales\service\GenerationRefused', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertStringContainsString('prepayment', $out['error']);
+        $this->assertSame(0, $this->deliveryCount($orderNo));
+        $this->assertNull(SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /** Checkpoint C M-3: customer_delivery.php shows an on-hold customer no form. */
+    public function testACustomerOnHoldIsRefusedAndNothingIsWritten(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $held = Anorm::pdo()->query(
+            'SELECT id FROM ' . DB::prefix('credit_status') . ' WHERE dissallow_invoices=1 LIMIT 1'
+        )->fetchColumn();
+        $this->assertNotFalse($held, 'the dataset has a credit status that disallows invoices');
+        $this->changeRow('debtors_master', 'debtor_no=' . $this->customerOf($orderNo), ['credit_status' => $held]);
+        $this->recurrence = $this->dueMonthly($orderNo);
+        $invoices = $this->invoiceCount($orderNo);
+        $deliveries = $this->deliveryCount($orderNo);
+
+        $out = $this->probe($orderNo, $this->today());
+
+        $this->assertSame('SGW_Sales\service\GenerationRefused', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertStringContainsString('on hold', $out['error']);
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($deliveries, $this->deliveryCount($orderNo));
+        $this->assertNull(SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /** Checkpoint C M-3: FrontAccounting would write with a rate of 1.0 where none is set. */
+    public function testACurrencyWithoutARateOnTheDateIsRefusedAndNothingIsWritten(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $currency = Anorm::pdo()->query(
+            'SELECT curr_abrev FROM ' . DB::prefix('currencies')
+            . ' WHERE curr_abrev NOT IN (SELECT curr_code FROM ' . DB::prefix('exchange_rates') . ')'
+            . ' AND curr_abrev <> (SELECT value FROM ' . DB::prefix('sys_prefs') . " WHERE name='curr_default')"
+            . ' ORDER BY curr_abrev LIMIT 1'
+        )->fetchColumn();
+        if ($currency === false) {
+            $this->markTestSkipped('every currency in the loaded dataset has a rate');
+        }
+        $this->changeRow('debtors_master', 'debtor_no=' . $this->customerOf($orderNo), ['curr_code' => $currency]);
+        $this->recurrence = $this->dueMonthly($orderNo);
+        $invoices = $this->invoiceCount($orderNo);
+        $deliveries = $this->deliveryCount($orderNo);
+
+        $out = $this->probe($orderNo, $this->today());
+
+        $this->assertSame('SGW_Sales\service\GenerationRefused', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertSame('date', $out['field']);
+        $this->assertStringContainsString("no exchange rate for $currency", $out['error']);
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($deliveries, $this->deliveryCount($orderNo));
+        $this->assertNull(SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    private function customerOf(int $orderNo): int
+    {
+        return (int) Anorm::pdo()->query(
+            'SELECT debtor_no FROM ' . DB::prefix('sales_orders')
+            . ' WHERE trans_type=' . ST_SALESORDER . " AND order_no=$orderNo"
+        )->fetchColumn();
     }
 }

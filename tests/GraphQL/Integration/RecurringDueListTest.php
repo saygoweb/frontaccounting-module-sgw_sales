@@ -37,7 +37,9 @@ class RecurringDueListTest extends RecurringGenerationTestCase
         $this->assertSame(
             [
                 'orderId' => (string) $orderNo, 'customerId' => '1', 'branchId' => '1',
-                'next' => null, 'repeats' => 'MONTH', 'every' => 1, 'day' => 1, 'monthDay' => null, 'end' => null,
+                // Checkpoint C M-7: never generated, it is due from its start.
+                'next' => date('Y-m-01'),
+                'repeats' => 'MONTH', 'every' => 1, 'day' => 1, 'monthDay' => null, 'end' => null,
             ],
             array_intersect_key($due[$orderNo], array_flip(
                 ['orderId', 'customerId', 'branchId', 'next', 'repeats', 'every', 'day', 'monthDay', 'end']

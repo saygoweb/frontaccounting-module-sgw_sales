@@ -61,7 +61,8 @@ final class RecurringGeneration
             'branchId' => (int) $model->branchCode,
             'reference' => $model->reference,
             'customerRef' => $model->customerRef === '' ? null : $model->customerRef,
-            'next' => DateConversion::fromSql($model->dtNext),
+            // Never generated: due from its start (the due rule), so that is its next.
+            'next' => DateConversion::fromSql($model->dtNext ?: $model->dtStart),
             'repeats' => $model->repeats,
             'every' => (int) $model->every,
             'day' => $monthly ? (int) $model->occur : null,
