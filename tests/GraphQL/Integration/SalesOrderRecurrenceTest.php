@@ -4,7 +4,9 @@ namespace SGW_Sales\Tests\GraphQL\Integration;
 
 use FA\GraphQL\Error\BadInput;
 use FA\GraphQL\Error\FaRejected;
+use FA\GraphQL\Extension\Extensions;
 use FA\GraphQL\Fa\CompanyContext;
+use FA\GraphQL\Fa\FaSession;
 use FA\GraphQL\Fa\Service\SalesOrderService;
 use FA\GraphQL\Fa\Service\ServiceCall;
 use FA\GraphQL\Type\SalesOrder\SalesOrderType;
@@ -208,8 +210,13 @@ class SalesOrderRecurrenceTest extends ExtensionTestCase
         $type = $this->container->get(SalesOrderType::class);
 
         $rows = $type->resolveDelete(null, ['id' => [(string) $orderNo]], $this->container);
+        // The row is the order as it was; `recurring` is this extension's field, which
+        // reads the participant's snapshot of the schedule the delete removed.
+        $recurring = $type->getField('recurring');
+        $schedule = ($recurring->resolveFn)($rows[0], [], $this->container);
 
-        $this->assertSame(15, $rows[0]['recurring']['day'], 'as it was before the delete');
+        $this->assertNull($this->participant()->read($orderNo), 'the delete removed the schedule');
+        $this->assertSame(15, $schedule['day'], 'as it was before the delete');
     }
 
     /**
@@ -254,6 +261,11 @@ class SalesOrderRecurrenceTest extends ExtensionTestCase
         CompanyContext::set(0, $connection);
         $schedule = new RecurrenceParticipant();
         $this->container->set(RecurrenceParticipant::class, $schedule);
+        // setUp() loaded the extensions, and with them the participant it replaced:
+        // this request's extensions and order service are loaded again to take it.
+        $extensions = new Extensions($this->container, $this->container->get(FaSession::class));
+        $this->container->set(Extensions::class, $extensions);
+        $this->container->set(SalesOrderService::class, new SalesOrderService($extensions));
         $orders = (int) $this->pdo()->query('SELECT COUNT(*) FROM 0_sales_orders')->fetchColumn();
 
         try {
