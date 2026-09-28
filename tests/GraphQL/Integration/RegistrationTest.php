@@ -4,6 +4,10 @@ namespace SGW_Sales\Tests\GraphQL\Integration;
 
 use FA\GraphQL\Extension\ExtensionContext;
 use FA\GraphQL\Extension\ExtensionRegistry;
+use FA\GraphQL\Extension\Extensions;
+use FA\GraphQL\Type\Invoice\InvoiceEmailResultType;
+use GraphQL\Type\Definition\ObjectType;
+use GraphQL\Type\Schema;
 use SGW_Sales\GraphQL\RecurrenceParticipant;
 use SGW_Sales\GraphQL\SgwSalesExtension;
 use SGW_Sales\GraphQL\Type\RecurrenceInputType;
@@ -51,8 +55,8 @@ class RegistrationTest extends ExtensionTestCase
 
         $this->assertSame('sgw_sales', $extension->name());
         $this->assertSame('1.0', $extension->contractVersion());
-        $this->assertSame([], $extension->queryFields($context));
-        $this->assertSame([], $extension->mutationFields($context));
+        $this->assertSame(['recurringDueList'], array_keys($extension->queryFields($context)));
+        $this->assertSame(['recurringGenerate'], array_keys($extension->mutationFields($context)));
 
         $types = $extension->typeFields($context);
         $this->assertSame(['SalesOrderType'], array_keys($types));
@@ -70,6 +74,23 @@ class RegistrationTest extends ExtensionTestCase
         $participants = $extension->participants($context);
         $this->assertCount(1, $participants);
         $this->assertSame($this->container->get(RecurrenceParticipant::class), $participants[0]);
+    }
+
+    /**
+     * RecurringGenerateResult.email is the core's InvoiceEmailResult, the same
+     * instance: the loader keeps the extension (the same type object is no clash) and
+     * the schema holds one InvoiceEmailResult.
+     */
+    public function testTheGenerationResultReusesTheCoresInvoiceEmailResult(): void
+    {
+        $this->assertContains('sgw_sales', $this->container->get(Extensions::class)->loaded()->names());
+        $schema = $this->container->get(Schema::class);
+        $result = $schema->getType('RecurringGenerateResult');
+        $this->assertInstanceOf(ObjectType::class, $result);
+
+        $this->assertSame($this->container->get(InvoiceEmailResultType::class), $result->getField('email')->getType());
+        $this->assertSame($this->container->get(InvoiceEmailResultType::class), $schema->getType('InvoiceEmailResult'));
+        $schema->assertValid();
     }
 
     public function testTheRecurringFieldReadsThroughTheParticipantsSnapshot(): void

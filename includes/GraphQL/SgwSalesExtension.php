@@ -3,15 +3,21 @@
 namespace SGW_Sales\GraphQL;
 
 use Anorm\GraphQL\Builder\FieldBuilder;
+use Anorm\GraphQL\Type\DateType;
 use FA\GraphQL\Extension\AbstractExtension;
 use FA\GraphQL\Extension\ExtensionContext;
+use GraphQL\Type\Definition\Type;
 use SGW_Sales\GraphQL\Type\RecurrenceInputType;
 use SGW_Sales\GraphQL\Type\RecurrenceType;
+use SGW_Sales\GraphQL\Type\RecurringDueType;
+use SGW_Sales\GraphQL\Type\RecurringGenerateInputType;
+use SGW_Sales\GraphQL\Type\RecurringGenerateResultType;
 
 /**
- * This module's part of the FrontAccounting GraphQL API (Release 4 spec §3): an
- * order's recurring schedule, as the `recurring` field on sales orders and their
- * inputs, kept in step with the order by RecurrenceParticipant. Registered by
+ * This module's part of the FrontAccounting GraphQL API (Release 4 spec §3, §4.2):
+ * an order's recurring schedule, as the `recurring` field on sales orders and their
+ * inputs, kept in step with the order by RecurrenceParticipant; and the recurring
+ * orders due (recurringDueList) and their generation (recurringGenerate). Registered by
  * hooks_sgw_sales::graphql_extensions() — only where the GraphQL module is
  * installed, and only for a company where this module is active.
  *
@@ -29,6 +35,48 @@ final class SgwSalesExtension extends AbstractExtension
     public function contractVersion(): string
     {
         return '1.0';
+    }
+
+    public function queryFields(ExtensionContext $c): array
+    {
+        $container = $c->container();
+
+        return [
+            'recurringDueList' => [
+                'type' => Type::nonNull(Type::listOf(Type::nonNull($container->get(RecurringDueType::class)))),
+                'description' => 'Recurring sales orders due on asOf (default today): next date reached, '
+                    . 'or never generated and started. sgw_sales.',
+                'args' => ['asOf' => ['type' => DateType::instance()]],
+                'resolve' => static function ($root, array $args) use ($c): array {
+                    return (new RecurringGeneration($c))->due($args);
+                },
+            ],
+        ];
+    }
+
+    public function mutationFields(ExtensionContext $c): array
+    {
+        $container = $c->container();
+
+        return [
+            'recurringGenerate' => [
+                'type' => Type::nonNull(Type::listOf(Type::nonNull(
+                    $container->get(RecurringGenerateResultType::class)
+                ))),
+                'description' => 'Deliver and invoice recurring sales orders due on each date, and move them on. '
+                    . 'Items are independent: each is written, or reports its error, on its own; a retry of a '
+                    . 'written item reports NOT_DUE. With email, the invoice is emailed after it is written. '
+                    . 'sgw_sales.',
+                'args' => [
+                    'input' => ['type' => Type::nonNull(Type::listOf(Type::nonNull(
+                        $container->get(RecurringGenerateInputType::class)
+                    )))],
+                ],
+                'resolve' => static function ($root, array $args) use ($c): array {
+                    return (new RecurringGeneration($c))->generate($args);
+                },
+            ],
+        ];
     }
 
     public function typeFields(ExtensionContext $c): array
