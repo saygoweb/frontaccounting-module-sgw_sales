@@ -36,23 +36,41 @@ A module for Front Accounting that provides recurring invoicing for sales orders
 Anorm is loaded from this module's own `vendor/`, into the same PHP process as every other
 extension. Another module that uses Anorm has to be on 3.x as well: only one `Anorm\` can be loaded.
 
-## Calling it from other code ##
+## Generating recurring invoices ##
 
-Generation is not tied to its page. `SGW_Sales\service\RecurringInvoiceService` is what the
-*Generate Recurring Invoices* page calls, and what an API should call:
+`SGW_Sales\service\RecurringInvoiceService` is the one place invoices are
+generated, for the Generate Recurring Invoices page and for the GraphQL API
+(`modules/graphql`'s extension, `recurringGenerate`):
+
+- `due(DateTimeInterface $asOf, bool $all = false)` - the sales orders whose
+  recurrence is due on `$asOf`: not ended, and either their next date reached, or
+  never generated and already started.
+- `generate(int $orderNo, DateTimeInterface $invoiceDate)` - delivers every line
+  of the order again and invoices it, dated `$invoiceDate`, and moves the
+  recurrence on, in one FrontAccounting transaction. It refuses an order that is
+  not due on that date, so running it twice bills once. It checks the fiscal year,
+  the exchange rate, a customer on hold and stock, and writes nothing if any fails.
+  It does not email: the page emails through FrontAccounting's invoice report
+  afterwards; the API through its own report process.
+
+For example:
 
     $service = new \SGW_Sales\service\RecurringInvoiceService();
+    $today = new \DateTime();
 
-    foreach ($service->due() as $order) {          // due(true) includes those not yet due
-        $result = $service->generate((int) $order->orderNo);   // generate($orderNo, $email = true)
-        // $result->invoiceNo, ->comment, ->dtNext, ->emailed
+    foreach ($service->due($today) as $order) {
+        $result = $service->generate((int) $order->orderNo, $today);
+        // $result->deliveryNo, ->invoiceNo, ->comment, ->dtNext
+        $service->emailInvoice($result->invoiceNo);   // the page's way: rep107, through $_POST
     }
 
-It needs FrontAccounting booted with a user logged in - the invoice is written by FrontAccounting's
-own `Cart`, which is what posts to the ledger - and this module's `hooks.php` loaded, which connects
-Anorm. It asks for the FrontAccounting includes it needs itself. `generate()` throws
-`RecurrenceNotFound` for an order with no recurrence and `RecurrenceEnded` for one whose end date has
-passed; an order that is merely not yet due is invoiced, as the page's *Show All* allows.
+It needs FrontAccounting booted with a user logged in - the documents are written by
+FrontAccounting's own `Cart`, which is what posts to the ledger - and this module's `hooks.php`
+loaded, which connects Anorm. It asks for the FrontAccounting includes it needs itself.
+`generate()` throws `RecurrenceNotFound` (no recurrence, or no such sales order),
+`RecurrenceEnded`, `RecurrenceNotDue`, or `GenerationRefused` (a check failed; `field()` names the
+input, `messages()` has FrontAccounting's reasons). The page's *Show All* lets a person pick an
+order that is not yet due; it passes `generate($orderNo, $date, true)` to invoice it early.
 
 The date arithmetic is `SGW_Sales\service\RecurrenceSchedule`: static, and free of FrontAccounting
 and the database.

@@ -98,14 +98,22 @@ abstract class HttpTestCase extends TestCase
         DB::init(getenv('FA_DB_PREFIX') !== false ? getenv('FA_DB_PREFIX') : '0_');
     }
 
-    /** A sales order with no recurrence yet, from whatever dataset is loaded. */
+    /**
+     * A sales order with no recurrence yet, from whatever dataset is loaded. One that
+     * holds no stock (service lines only) where there is one: every generation
+     * delivers the order again, these documents are not rolled back, and the
+     * service refuses a delivery the stock cannot cover.
+     */
     protected function unrecurredOrder(): int
     {
         $orderNo = Anorm::pdo()->query(
             'SELECT so.order_no FROM ' . DB::prefix('sales_orders') . ' AS so'
             . ' WHERE so.trans_type=' . ST_SALESORDER
             . ' AND so.order_no NOT IN (SELECT trans_no FROM ' . DB::prefix('sales_recurring') . ')'
-            . ' ORDER BY so.order_no DESC LIMIT 1'
+            . ' ORDER BY EXISTS (SELECT 1 FROM ' . DB::prefix('sales_order_details') . ' AS line'
+            . ' JOIN ' . DB::prefix('stock_master') . ' AS item ON item.stock_id=line.stk_code'
+            . " WHERE line.order_no=so.order_no AND line.trans_type=so.trans_type AND item.mb_flag IN ('B', 'M')),"
+            . ' so.order_no DESC LIMIT 1'
         )->fetchColumn();
         if (!$orderNo) {
             $this->markTestSkipped('the loaded dataset has no sales order to hang a recurrence on');
@@ -134,6 +142,37 @@ abstract class HttpTestCase extends TestCase
         );
         $statement->execute([':order' => $orderNo]);
         return (int) $statement->fetchColumn();
+    }
+
+    protected function deliveryCount(int $orderNo): int
+    {
+        $statement = Anorm::pdo()->prepare(
+            'SELECT COUNT(*) FROM ' . DB::prefix('debtor_trans')
+            . ' WHERE type=' . ST_CUSTDELIVERY . ' AND order_=:order'
+        );
+        $statement->execute([':order' => $orderNo]);
+        return (int) $statement->fetchColumn();
+    }
+
+    /** The GL of a delivery and an invoice sums to zero, as every FrontAccounting posting must. */
+    protected function assertGlBalanced(int $deliveryNo, int $invoiceNo): void
+    {
+        $statement = Anorm::pdo()->prepare(
+            'SELECT ROUND(SUM(amount), 2) FROM ' . DB::prefix('gl_trans')
+            . ' WHERE (type=' . ST_CUSTDELIVERY . ' AND type_no=:d) OR (type=' . ST_SALESINVOICE . ' AND type_no=:i)'
+        );
+        $statement->execute([':d' => $deliveryNo, ':i' => $invoiceNo]);
+        $this->assertEquals(0.0, (float) $statement->fetchColumn(), 'GL not balanced');
+    }
+
+    /** A monthly recurrence on the 1st whose next date is $dtNext (null: never generated, started 2016). */
+    protected function monthlyOnThe1st(int $orderNo, ?string $dtNext, ?string $dtEnd = null): SalesRecurringModel
+    {
+        $recurrence = $this->dueMonthly($orderNo);
+        $recurrence->dtNext = $dtNext;
+        $recurrence->dtEnd = $dtEnd;
+        $recurrence->write();
+        return $recurrence;
     }
 
     protected function assertRendered(int $status, string $html): void

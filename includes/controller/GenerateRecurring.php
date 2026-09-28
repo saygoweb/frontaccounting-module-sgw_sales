@@ -37,9 +37,19 @@ class GenerateRecurring {
 		global $Ajax;
 		if (get_post('GenerateInvoices')) {
 			$Ajax->activate('_page_body');
+			$today = new \DateTime();
+			// "Show All" lists orders not yet due; a person picking one generates it early.
+			$early = (bool) check_value('show_all');
 			// Collected first: emailing an invoice goes through $_POST.
 			foreach (self::selectedOrders($_POST) as $orderNo) {
-				$this->_service->generate($orderNo);
+				try {
+					$generated = $this->_service->generate($orderNo, $today, $early);
+				} catch (\Exception $e) {
+					display_error(sprintf(_('Sales order %d was not invoiced: %s'), $orderNo, $e->getMessage()));
+					continue;
+				}
+				// After the commit: a failure to send leaves the invoice written and the order moved on.
+				$this->_service->emailInvoice($generated->invoiceNo);
 				$this->_view->generatedInvoice($orderNo);
 			}
 			return;
@@ -72,7 +82,7 @@ class GenerateRecurring {
 	
 	public function table() {
 		$k = 0;
-		foreach ($this->_service->due((bool) $this->_showAll) as $model) {
+		foreach ($this->_service->due(new \DateTime(), (bool) $this->_showAll) as $model) {
 			if ($this->_force != self::FORCE_NO) {
 				$key = 's_' . $model->orderNo;
 				$_POST[$key] = $this->_force;
@@ -80,5 +90,5 @@ class GenerateRecurring {
 			$this->_view->tableRow($model, $k);
 		}
 	}
-	
+
 }

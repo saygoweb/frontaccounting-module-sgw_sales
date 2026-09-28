@@ -56,4 +56,35 @@ class GenerateInvoiceTest extends HttpTestCase
         $expected = (new \DateTime('first day of next month'))->format('Y-m-d');
         $this->assertSame($expected, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
     }
+
+    public function testAnOrderNotYetDueIsRefusedWithAMessageUnlessShowingAll(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $before = $this->invoiceCount($orderNo);
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, (new \DateTime('tomorrow'))->format('Y-m-d'));
+
+        [, $html] = $this->request(self::PAGE);
+        $this->assertStringNotContainsString("name='s_$orderNo'", $html, 'not due, so not listed');
+        [$status, $html] = $this->request(self::PAGE, [
+            's_' . $orderNo => '1',
+            'GenerateInvoices' => 'Generate',
+            '_token' => $this->token($html),
+        ]);
+        $this->assertSame(200, $status);
+        $this->assertStringContainsString("Sales order $orderNo was not invoiced", $html);
+        $this->assertStringNotContainsString('Generated invoice for order ' . $orderNo, $html);
+        $this->assertSame($before, $this->invoiceCount($orderNo));
+
+        // Show All lists it, and a person picking it there invoices it early.
+        [, $html] = $this->request(self::PAGE);
+        [$status, $html] = $this->request(self::PAGE, [
+            'show_all' => '1',
+            's_' . $orderNo => '1',
+            'GenerateInvoices' => 'Generate',
+            '_token' => $this->token($html),
+        ]);
+        $this->assertRendered($status, $html);
+        $this->assertStringContainsString('Generated invoice for order ' . $orderNo, $html);
+        $this->assertSame($before + 1, $this->invoiceCount($orderNo));
+    }
 }
