@@ -46,7 +46,7 @@ generated, for the Generate Recurring Invoices page and for the GraphQL API
 - `due(DateTimeInterface $asOf, bool $all = false)` - the sales orders whose
   recurrence is due on `$asOf`: not ended, and either their next date reached, or
   never generated and already started.
-- `generate(int $orderNo, DateTimeInterface $invoiceDate)` - delivers every line
+- `generate(int $orderNo, DateTimeInterface $invoiceDate, bool $allowEarly = false)` - delivers every line
   of the order again and invoices it, dated `$invoiceDate`, and moves the
   recurrence on, in one FrontAccounting transaction. It refuses an order that is
   not due on that date, or a period already billed, so running it twice bills once;
@@ -58,6 +58,13 @@ generated, for the Generate Recurring Invoices page and for the GraphQL API
   deliver, and a prepayment order. It checks the
   fiscal year, the exchange rate, a customer on hold and stock, and writes nothing
   if any fails.
+  One case is not detected (FrontAccounting's limit, not this module's): an order
+  closed on FrontAccounting's own sales order page after exactly **one** delivery
+  looks like an open order that has delivered once, so it stays due and is billed
+  again at the full quantity. Close a recurring order on this module's page or
+  through the API (`salesOrderDelete` of a delivered order, or a delivery with `closeOrder`), which end its schedule and record the close.
+  Closed on FrontAccounting's page after two or more deliveries, it is refused
+  (`ENDED`) on every run but stays on the due list until its schedule is ended.
   It does not email: the page emails through FrontAccounting's invoice report
   afterwards; the API through its own report process.
 
@@ -80,7 +87,9 @@ loaded, which connects Anorm. It asks for the FrontAccounting includes it needs 
 input, `messages()` has FrontAccounting's reasons). The page's *Show All* lets a person pick an
 order that is not yet due; it passes `generate($orderNo, $date, true)` to bill the next due
 period early - from `dt_next`, or the schedule's start if it has never been generated - dated
-`$date`, once: asked again, that period is already billed.
+`$date`, once: asked again, that period is already billed. It never bills a period that starts
+on or after the schedule's end: that is refused as ended (`RecurrenceEnded`), as a run on the
+period's own date would refuse it.
 
 The date arithmetic is `SGW_Sales\service\RecurrenceSchedule`: static, and free of FrontAccounting
 and the database.
@@ -127,6 +136,34 @@ Activating this module now applies `sql/update_1.4.sql` as well as
 `update_1.0.sql`. A company activated before must be re-activated (Setup →
 Install/Activate Extensions) for the GraphQL API to write schedules; first check
 it for duplicate schedules with `sql/helpers/update_1.4-duplicates.sql`.
+
+### Merging and deploying Release 4 ###
+
+Release 4 is two pull requests: this module's `feature/graphql-extension` and the GraphQL
+module's `feature/release-4`. Each CI pins the other's feature branch until the merges:
+
+ 1. Push **both** branches before opening either PR (each CI checks out the other's branch).
+ 2. Merge and deploy this module first. It is safe on its own: the GraphQL module's current
+    `main` has no extension loader, so nothing calls `graphql_extensions` (and the hook's
+    `interface_exists` guard would refuse anyway) - the extension is inert, and `main` keeps
+    serving `recurring` itself. Keep the window short and avoid rhythm changes through the API
+    during it: the old module's API still clears `dt_next` on a rhythm change.
+ 3. In the GraphQL module, switch CI's `SGW_SALES_REF` from `feature/graphql-extension` to
+    `master`, then merge and deploy it. Deploy order follows merge order.
+ 4. Here, switch CI's `GRAPHQL_REF` from `feature/release-4` to `main` (a definite follow-up,
+    before `feature/release-4` is deleted).
+ 5. Re-activate, for **each** company, this module (which applies `update_1.4.sql`; until then
+    API writes to `recurring` are refused with `FA_REJECTED`) and the GraphQL module.
+
+Before deploying, on each company where the API changed schedules, find schedules whose
+`dt_next` Release 2's API cleared although they were billed already:
+
+    SELECT sr.trans_no FROM 0_sales_recurring sr
+    JOIN 0_debtor_trans dt ON dt.order_=sr.trans_no AND dt.type=10
+    WHERE sr.dt_next IS NULL GROUP BY sr.trans_no;
+
+(with the company's table prefix). Set `dt_next` by hand on any row it returns: otherwise
+the schedule reads as never generated and is due again from its start.
 
 ## Development ##
 

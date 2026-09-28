@@ -327,6 +327,46 @@ class ServiceWithoutAPageTest extends HttpTestCase
     }
 
     /**
+     * Checkpoint D M-1: Show All bills the period starting at dt_next. When the
+     * schedule ends on that date, a run on it would refuse the order as ended; so
+     * must the early run before it - nothing is written.
+     */
+    public function testEarlyGenerationOfAPeriodStartingAtTheEndIsRefused(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $nextMonth = (new \DateTime('first day of next month'))->format('Y-m-d');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, $nextMonth, $nextMonth);
+        $invoices = $this->invoiceCount($orderNo);
+        $deliveries = $this->deliveryCount($orderNo);
+
+        $early = $this->probe($orderNo, $this->today(), ['early' => 1]);
+
+        $this->assertSame('SGW_Sales\service\RecurrenceEnded', $early['errorClass'] ?? null, $early['error'] ?? '');
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($deliveries, $this->deliveryCount($orderNo));
+        $this->assertSame($nextMonth, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /** Checkpoint D M-1: the same for a never-generated schedule that ends on its start. */
+    public function testEarlyGenerationOfANeverGeneratedScheduleEndingAtItsStartIsRefused(): void
+    {
+        $orderNo = $this->unrecurredOrder();
+        $nextMonth = (new \DateTime('first day of next month'))->format('Y-m-d');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, null, $nextMonth);
+        $this->recurrence->dtStart = $nextMonth;
+        $this->recurrence->write();
+        $invoices = $this->invoiceCount($orderNo);
+        $deliveries = $this->deliveryCount($orderNo);
+
+        $early = $this->probe($orderNo, $this->today(), ['early' => 1]);
+
+        $this->assertSame('SGW_Sales\service\RecurrenceEnded', $early['errorClass'] ?? null, $early['error'] ?? '');
+        $this->assertSame($invoices, $this->invoiceCount($orderNo));
+        $this->assertSame($deliveries, $this->deliveryCount($orderNo));
+        $this->assertNull(SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+    }
+
+    /**
      * Coordinator's ruling on Checkpoint C: a late run bills a period that began
      * before the schedule's end, even when today is past the end (December's period
      * on 5 January, for a schedule ending 31 December) - once. A period that begins

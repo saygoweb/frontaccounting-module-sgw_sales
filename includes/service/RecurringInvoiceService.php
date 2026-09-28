@@ -44,7 +44,8 @@ class RecurringInvoiceService
      *   "Show All", where a person picks it) for its next due period, dated
      *   $invoiceDate; never from the API
      * @throws RecurrenceNotFound the order has no recurrence, or no longer exists
-     * @throws RecurrenceEnded the recurrence has ended by $invoiceDate, or the order is closed
+     * @throws RecurrenceEnded the recurrence has ended by $invoiceDate (billed early: by the
+     *   start of the period billed), or the order is closed
      * @throws RecurrenceNotDue not due on $invoiceDate (and not $allowEarly), or the
      *   period already billed (early generation bills the next due period - from
      *   dt_next, or the start - once: not when a period after the date is billed)
@@ -92,6 +93,14 @@ class RecurringInvoiceService
             $period = $date;
             if (!$due) {
                 $period = new \DateTime($recurrence->dtNext ?: $recurrence->dtStart);
+                // A run on the period's own date would refuse it as ended; so does an
+                // early one.
+                if ($recurrence->dtEnd && $recurrence->dtEnd <= $period->format('Y-m-d')) {
+                    throw new RecurrenceEnded(
+                        "The recurrence of sales order $orderNo ends on " . $recurrence->dtEnd
+                        . ': there is no period left to bill'
+                    );
+                }
                 // Early once: a period starting after the date is billed already.
                 $billedFrom = $recurrence->dtNext ? RecurrenceSchedule::periodsBefore($recurrence, $period) : null;
                 if ($billedFrom && $billedFrom > $date) {
