@@ -137,22 +137,15 @@ Activating this module now applies `sql/update_1.4.sql` as well as
 Install/Activate Extensions) for the GraphQL API to write schedules; first check
 it for duplicate schedules with `sql/helpers/update_1.4-duplicates.sql`.
 
-### Merging and deploying Release 4 ###
+### Deploying Release 4 ###
 
-Release 4 is two pull requests: this module's `feature/graphql-extension` and the GraphQL
-module's `feature/release-4`. Each CI pins the other's feature branch until the merges:
+This module's GraphQL extension works with the GraphQL module's Release 4 and later.
 
- 1. Push **both** branches before opening either PR (each CI checks out the other's branch).
- 2. Merge and deploy this module first. It is safe on its own: the GraphQL module's current
-    `main` has no extension loader, so nothing calls `graphql_extensions` (and the hook's
-    `interface_exists` guard would refuse anyway) - the extension is inert, and `main` keeps
-    serving `recurring` itself. Keep the window short and avoid rhythm changes through the API
-    during it: the old module's API still clears `dt_next` on a rhythm change.
- 3. In the GraphQL module, switch CI's `SGW_SALES_REF` from `feature/graphql-extension` to
-    `master`, then merge and deploy it. Deploy order follows merge order.
- 4. Here, switch CI's `GRAPHQL_REF` from `feature/release-4` to `main` (a definite follow-up,
-    before `feature/release-4` is deleted).
- 5. Re-activate, for **each** company, this module (which applies `update_1.4.sql`; until then
+ 1. Deploy this module first. It is inert on an older GraphQL module (no extension loader),
+    which keeps serving `recurring` itself; keep the window short and avoid rhythm changes
+    through the API during it (the old module's API clears `dt_next` on a rhythm change).
+ 2. Deploy the GraphQL module.
+ 3. Re-activate, for **each** company, this module (which applies `update_1.4.sql`; until then
     API writes to `recurring` are refused with `FA_REJECTED`) and the GraphQL module.
 
 Before deploying, on each company where the API changed schedules, find schedules whose
