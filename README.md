@@ -31,7 +31,8 @@ A module for Front Accounting that provides recurring invoicing for sales orders
    [cambell-prince fork](https://github.com/cambell-prince/frontaccounting) at `master-cp`.
  - `composer install --no-dev` in the module directory; the release packages ship with `vendor/` in place.
  - Activating the extension creates and upgrades its table (`sql/update_1.0.sql`, then
-   `sql/update_1.4.sql`). Grant the *SayGo Sales* areas to a role in Setup → Access Setup.
+   `sql/update_1.4.sql`); an install activated before this release should be
+   re-activated per company once. Grant the *SayGo Sales* areas to a role in Setup → Access Setup.
 
 Anorm is loaded from this module's own `vendor/`, into the same PHP process as every other
 extension. Another module that uses Anorm has to be on 3.x as well: only one `Anorm\` can be loaded.
@@ -77,21 +78,42 @@ loaded, which connects Anorm. It asks for the FrontAccounting includes it needs 
 `generate()` throws `RecurrenceNotFound` (no recurrence, or no such sales order),
 `RecurrenceEnded`, `RecurrenceNotDue`, or `GenerationRefused` (a check failed; `field()` names the
 input, `messages()` has FrontAccounting's reasons). The page's *Show All* lets a person pick an
-order that is not yet due; it passes `generate($orderNo, $date, true)` to invoice the current
-period early - once: asked again, that period is already billed.
+order that is not yet due; it passes `generate($orderNo, $date, true)` to bill the next due
+period early - from `dt_next`, or the schedule's start if it has never been generated - dated
+`$date`, once: asked again, that period is already billed.
 
 The date arithmetic is `SGW_Sales\service\RecurrenceSchedule`: static, and free of FrontAccounting
 and the database.
 
-## GraphQL API ##
+## GraphQL extension ##
 
-When the FrontAccounting GraphQL module (`modules/graphql`) is installed, this
-module adds to its API, for every company where it is active: the `recurring`
-schedule on sales orders (`salesOrderList`, `salesOrderCreate`, `salesOrderUpdate`),
-written in the order's own transaction. The code is `includes/GraphQL/`, registered
-by `hooks_sgw_sales::graphql_extensions()`. Without that module nothing of it loads.
+When the [FrontAccounting GraphQL module](https://github.com/saygoweb/frontaccounting-module-graphql)
+is installed, this module extends its API through the module's extension contract
+(`hooks_sgw_sales::graphql_extensions`, code in `includes/GraphQL/`). Without the
+GraphQL module nothing here is loaded.
 
-Its tests (`phpunit-graphql.xml`) run inside the GraphQL module's docker stack,
+For companies where this module is active the API gains:
+
+ - `recurring` on sales orders (read) and on the sales order create/update inputs
+   (`start`, `end`, `repeats` `MONTH|YEAR`, `every`, `day` or `monthDay`, `auto`),
+   written in the order's own transaction;
+ - `recurringDueList(asOf)` — the recurring orders due on a date; `next` is a
+   never-generated schedule's start date, else its next due date;
+ - `recurringGenerate(input: [{orderId, date, email}])` — deliver, invoice and
+   optionally email each due order in one FrontAccounting transaction; items are
+   independent (one item's refusal does not stop the rest), and a retry never bills
+   a period twice (`NOT_DUE`). A closed order, or a schedule ended on or before the
+   date asked, is refused too (`ENDED`); other refusals are `NOT_FOUND`, `BAD_INPUT`,
+   `FA_REJECTED` or `INTERNAL`. `email: true` sends the invoice through
+   FrontAccounting's `rep107` after the item's transaction commits.
+ - Areas: listing needs *Sales transactions view* (`SA_SALESTRANSVIEW`); generating
+   needs *Sales deliveries edition* (`SA_SALESDELIVERY`) and *Sales invoices
+   edition* (`SA_SALESINVOICE`).
+
+The page and the API share one generation service (`RecurringInvoiceService`, see
+above); the API never asks for early generation (`allowEarly` is always `false`).
+
+Its GraphQL tests (`tests/GraphQL/`) run inside the GraphQL module's docker stack,
 against this checkout mounted over the stack's clone, with no skips:
 
     cd ../graphql
