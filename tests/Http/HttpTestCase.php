@@ -42,7 +42,7 @@ abstract class HttpTestCase extends TestCase
     {
         self::$base = rtrim((string) getenv('FA_URL'), '/');
         if (!self::$base) {
-            $this->markTestSkipped('FA_URL is not set - run the suite through docker/fa-sgw-sales test');
+            $this->markTestSkipped('FA_URL is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)');
         }
         if (!self::$cookies) {
             $this->login();
@@ -131,7 +131,7 @@ abstract class HttpTestCase extends TestCase
     protected function connectDb(): void
     {
         if (!getenv('FA_DB_HOST')) {
-            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through docker/fa-sgw-sales test');
+            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)');
         }
         Anorm::connect(
             Anorm::DEFAULT,

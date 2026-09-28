@@ -160,14 +160,21 @@ the schedule reads as never generated and is due again from its start.
 
 ## Development ##
 
-There is a docker stack that supplies FrontAccounting, PHP and MariaDB, so nothing but docker is
-needed on the host. See [docker/README.md](docker/README.md).
+CI runs `tools/ci.sh` (lint, analyze, phpunit) and `tools/ci-graphql.sh` (the
+GraphQL-extension suite, with graphql activated first) in the FrontAccounting
+CI image
+([cambell-prince/frontaccounting `docker/ci`](https://github.com/cambell-prince/frontaccounting/tree/master-cp/docker/ci)),
+on FrontAccounting's demo company; role 2 gets the module's areas through
+`fa-ci-grant`. With that repository checked out beside this one, the same
+runs locally are:
 
-    docker/fa-sgw-sales init      # pick free host ports
-    docker/fa-sgw-sales up        # build, boot, seed, composer install
-    docker/fa-sgw-sales test      # PHPUnit: unit, db and http suites
-    docker/fa-sgw-sales lint      # php -l, then phpcs (advisory)
-    docker/fa-sgw-sales analyze   # PHPStan
-    docker/fa-sgw-sales make package
+    ../frontaccounting/docker/ci/plugin-test.sh --dataset demo \
+      --setup 'composer install --no-interaction --no-progress' \
+      . -- sh tools/ci.sh
+
+    ../frontaccounting/docker/ci/plugin-test.sh --dataset demo \
+      --setup 'composer install --no-interaction --no-progress && (cd ../graphql && composer install --no-interaction --no-progress)' \
+      --with graphql=https://github.com/saygoweb/frontaccounting-module-graphql.git@main \
+      . -- sh tools/ci-graphql.sh
 
 GitHub Actions runs the same commands on PHP 7.4 and 8.3.

@@ -1,5 +1,9 @@
 name: CI
 
+# Runs in the FrontAccounting CI image (cambell-prince/frontaccounting
+# docker/ci) on FrontAccounting's demo company: the module's own suites, and
+# its GraphQL-extension suite with graphql activated alongside.
+
 on:
   push:
     branches:
@@ -8,118 +12,40 @@ on:
       - 'fix/**'
       - 'bug/**'
       - 'issue/**'
+      - 'ci/**'
   pull_request:
   workflow_dispatch:
 
-# A second push to the same branch makes the first run's answer irrelevant, and
-# each run builds an image and a database.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
-    name: PHP ${{ matrix.php }}
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        # Both gate. 7.4 is the oldest Anorm 3 supports and what composer.json
-        # resolves the lock against; 8.3 is current. slug because a compose
-        # project name cannot contain a dot.
-        include:
-          - php: '7.4'
-            slug: '74'
-          - php: '8.3'
-            slug: '83'
-
-    env:
-      PHP_VERSION: ${{ matrix.php }}
-      # The workflow runs one stack per job; fixed ports are free on a runner.
-      HTTP_PORT: '8110'
-      DB_PORT: '3330'
-      COMPOSE_PROJECT_NAME: fa-sgw-sales-ci-${{ matrix.slug }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      # Everything below goes through the same CLI a developer uses, so a green
-      # run here means `docker/fa-sgw-sales ci` is green on a laptop too.
-      - name: Build and boot the stack
-        run: docker/fa-sgw-sales up --build
-
-      - name: Lint
-        run: docker/fa-sgw-sales lint
-
-      - name: Analyze
-        run: docker/fa-sgw-sales analyze
-
-      - name: Test
-        run: docker/fa-sgw-sales test
-
-      - name: Container logs
-        if: failure()
-        run: |
-          docker/fa-sgw-sales logs app --tail 300
-          docker/fa-sgw-sales logs errors || true
-
-      - name: Tear down
-        if: always()
-        run: docker/fa-sgw-sales destroy --yes
-
-  # The GraphQL extension (includes/GraphQL) against the FrontAccounting GraphQL
-  # module, in that module's own docker stack with this checkout mounted as its
-  # sgw_sales. The suites are phpunit-graphql.xml's, run with the module's phpunit.
-  graphql-extension:
-    name: GraphQL extension / FA ${{ matrix.fa.name }} / PHP ${{ matrix.php }}
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         php: ['7.4', '8.3']
-        fa:
-          - name: upstream
-            repo: https://github.com/FrontAccountingERP/FA.git
-            ref: master
-          - name: fork
-            repo: https://github.com/cambell-prince/frontaccounting.git
-            ref: master-cp
-    env:
-      PHP_VERSION: ${{ matrix.php }}
-      FA_REPO: ${{ matrix.fa.repo }}
-      FA_REF: ${{ matrix.fa.ref }}
-      COMPOSE_PROJECT_NAME: sgw-gql-${{ matrix.fa.name }}-${{ matrix.php }}
-      # The GraphQL module, whose extension contract this extension implements.
-      GRAPHQL_REF: main
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: sgw_sales
-      - uses: actions/checkout@v4
-        with:
-          repository: saygoweb/frontaccounting-module-graphql
-          ref: ${{ env.GRAPHQL_REF }}
-          path: graphql
-      # Before the stack boots: the bind mount replaces the image's clone and its
-      # vendor/, and FrontAccounting loads this module's hooks.php (which requires
-      # vendor/autoload.php) on every page, the stack's readiness check included.
-      - name: This checkout's own dependencies
-        working-directory: sgw_sales
-        run: docker run --rm -v "$PWD":/app -w /app composer:2 install --no-interaction --no-progress --ignore-platform-reqs
-      - name: Boot the GraphQL module's stack with this checkout mounted
-        working-directory: graphql
-        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql up --build
-      - name: The extension suites
-        working-directory: graphql
-        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql test-extension sgw_sales --fail-on-skipped
-      - name: Container logs
-        if: failure()
-        working-directory: graphql
-        run: |
-          SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql logs app --tail 300
-          SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql logs errors || true
-      - name: Tear down
-        if: always()
-        working-directory: graphql
-        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql destroy --yes
+    uses: cambell-prince/frontaccounting/.github/workflows/plugin-test.yml@master-cp
+    with:
+      fa: cp
+      php: ${{ matrix.php }}
+      dataset: demo
+      setup: composer install --no-interaction --no-progress
+      test: sh tools/ci.sh
+
+  graphql-extension:
+    strategy:
+      fail-fast: false
+      matrix:
+        fa: [cp, upstream]
+        php: ['7.4', '8.3']
+    uses: cambell-prince/frontaccounting/.github/workflows/plugin-test.yml@master-cp
+    with:
+      fa: ${{ matrix.fa }}
+      php: ${{ matrix.php }}
+      dataset: demo
+      setup: composer install --no-interaction --no-progress && (cd ../graphql && composer install --no-interaction --no-progress)
+      with: |
+        graphql=https://github.com/saygoweb/frontaccounting-module-graphql.git@main
+      test: sh tools/ci-graphql.sh

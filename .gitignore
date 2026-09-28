@@ -5,7 +5,6 @@
 /.claude/
 *.tgz
 *.zip
-docker/.env
 tmp/
 
 # phpmake run logs

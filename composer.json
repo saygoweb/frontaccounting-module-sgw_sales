@@ -46,13 +46,13 @@
         "package": "make.phar package"
     },
     "scripts-descriptions": {
-        "test": "Run the PHPUnit suite. The db and http tests need a database and the module served from a FrontAccounting install - docker/fa-sgw-sales test provides both.",
+        "test": "Run the PHPUnit suite. The db and http tests need a database and the module served from a FrontAccounting install - tools/ci.sh, run in the FrontAccounting CI image, provides both.",
         "lint": "php -l over every PHP and .inc file in the module.",
-        "cs:check": "Check includes/db, includes/common and tests/ against PSR-12 (phpcs.xml). Not yet clean, so it is deliberately not part of quality/ci; docker/fa-sgw-sales lint reports it without failing.",
+        "cs:check": "Check includes/db, includes/common and tests/ against PSR-12 (phpcs.xml). Not yet clean, so it is deliberately not part of quality/ci; tools/ci.sh reports it without failing.",
         "cs:fix": "Fix what phpcbf can fix automatically.",
         "analyze": "Run PHPStan over includes/ (phpstan.neon).",
         "quality": "lint, then analyze - the two static gates.",
-        "ci": "quality, then test - the same gates GitHub Actions runs through docker/fa-sgw-sales.",
-        "package": "Build the release zip and tarball (needs make.phar; docker/fa-sgw-sales make package)."
+        "ci": "quality, then test - the same gates tools/ci.sh runs in CI.",
+        "package": "Build the release zip and tarball (needs make.phar; see README)."
     }
 }
