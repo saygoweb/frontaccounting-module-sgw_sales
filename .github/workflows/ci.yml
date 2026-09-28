@@ -90,9 +90,8 @@ jobs:
       FA_REPO: ${{ matrix.fa.repo }}
       FA_REF: ${{ matrix.fa.ref }}
       COMPOSE_PROJECT_NAME: sgw-gql-${{ matrix.fa.name }}-${{ matrix.php }}
-      # The GraphQL module's branch that has the extension contract. Its Release 4
-      # PR is open; switch to main once it merges.
-      GRAPHQL_REF: feature/release-4
+      # The GraphQL module, whose extension contract this extension implements.
+      GRAPHQL_REF: main
     steps:
       - uses: actions/checkout@v4
         with:
