@@ -50,9 +50,11 @@ generated, for the Generate Recurring Invoices page and for the GraphQL API
   recurrence on, in one FrontAccounting transaction. It refuses an order that is
   not due on that date, or a period already billed, so running it twice bills once;
   the next date must move strictly past the date billed (a schedule with `every`
-  outside 1-127 is refused). It refuses a schedule that has ended by that date or
-  by today (closing an order - on its page or through the API - ends its schedule
-  today), an order with nothing to deliver, and a prepayment order. It checks the
+  outside 1-127 is refused). It refuses a closed order whatever the date (closing
+  an order - on its page or through the API - ends its schedule today and records
+  the close in the audit trail), a schedule that has ended by that date (a late run
+  may still bill a period that began before the end), an order with nothing to
+  deliver, and a prepayment order. It checks the
   fiscal year, the exchange rate, a customer on hold and stock, and writes nothing
   if any fails.
   It does not email: the page emails through FrontAccounting's invoice report

@@ -256,21 +256,62 @@ class ServiceWithoutAPageTest extends HttpTestCase
     }
 
     /**
-     * Checkpoint C C-2: the API's close ends the schedule today. A billing run dated
-     * before today found it not yet ended and billed the closed order.
+     * Coordinator's ruling on Checkpoint C: a late run bills a period that began
+     * before the schedule's end, even when today is past the end (December's period
+     * on 5 January, for a schedule ending 31 December) - once. A period that begins
+     * on or after the end is refused.
      */
-    public function testAScheduleEndedTodayIsRefusedForAnEarlierDateToo(): void
+    public function testALateRunWithinTheScheduleEndIsAllowedOnceThenRefused(): void
     {
         $orderNo = $this->unrecurredOrder();
         $lastMonth = (new \DateTime('first day of last month'))->format('Y-m-d');
-        $this->recurrence = $this->monthlyOnThe1st($orderNo, $lastMonth, $this->today());
+        $end = (new \DateTime('last day of last month'))->format('Y-m-d');
+        $thisMonth = (new \DateTime('first day of this month'))->format('Y-m-d');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, $lastMonth, $end);
         $invoices = $this->invoiceCount($orderNo);
 
-        $out = $this->probe($orderNo, $lastMonth);
+        $late = $this->probe($orderNo, $lastMonth);
+
+        $this->assertArrayNotHasKey('error', $late, $late['error'] ?? '');
+        $this->assertSame($invoices + 1, $this->invoiceCount($orderNo));
+        $this->assertSame($thisMonth, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+
+        $again = $this->probe($orderNo, $lastMonth);
+        $this->assertSame('SGW_Sales\service\RecurrenceNotDue', $again['errorClass'] ?? null, $again['error'] ?? '');
+        $after = $this->probe($orderNo, $thisMonth);
+        $this->assertSame('SGW_Sales\service\RecurrenceEnded', $after['errorClass'] ?? null, $after['error'] ?? '');
+        $this->assertSame($invoices + 1, $this->invoiceCount($orderNo));
+    }
+
+    /**
+     * Checkpoint C C-2: an order closed without its schedule ending (FrontAccounting's
+     * own close, or sgw_sales' page before this release) holds every period sent so
+     * far in its lines. It is refused as closed, whatever the date.
+     */
+    public function testAnOrderClosedWithoutItsScheduleEndingIsRefused(): void
+    {
+        $orderNo = $this->copyOrder($this->unrecurredOrder());
+        $twoMonthsAgo = (new \DateTime('first day of -2 months'))->format('Y-m-d');
+        $lastMonth = (new \DateTime('first day of last month'))->format('Y-m-d');
+        $thisMonth = (new \DateTime('first day of this month'))->format('Y-m-d');
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, $twoMonthsAgo);
+        foreach ([$twoMonthsAgo, $lastMonth] as $date) {
+            $out = $this->probe($orderNo, $date);
+            $this->assertArrayNotHasKey('error', $out, $out['error'] ?? '');
+        }
+        // close_sales_order() (sales_order_db.inc), and nothing else.
+        Anorm::pdo()->exec(
+            'UPDATE ' . DB::prefix('sales_order_details') . ' SET quantity=qty_sent'
+            . ' WHERE trans_type=' . ST_SALESORDER . " AND order_no=$orderNo"
+        );
+        $invoices = $this->invoiceCount($orderNo);
+
+        $out = $this->probe($orderNo, $thisMonth);
 
         $this->assertSame('SGW_Sales\service\RecurrenceEnded', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertStringContainsString('is closed', $out['error']);
         $this->assertSame($invoices, $this->invoiceCount($orderNo));
-        $this->assertSame($lastMonth, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
+        $this->assertSame($thisMonth, SalesRecurringModel::readByTransNo($orderNo)->dtNext);
     }
 
     /** Checkpoint C M-4: customer_delivery.php's "nothing to deliver", as DeliveryService refuses it. */

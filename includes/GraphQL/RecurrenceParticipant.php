@@ -7,6 +7,7 @@ use FA\GraphQL\Error\FaRejected;
 use FA\GraphQL\Extension\SalesOrderParticipant;
 use FA\GraphQL\Fa\CompanyContext;
 use FA\GraphQL\Fa\DateConversion;
+use SGW_Sales\service\RecurringInvoiceService;
 
 /**
  * An order's recurring schedule — this module's sales_recurring row — kept in step
@@ -98,7 +99,13 @@ final class RecurrenceParticipant implements SalesOrderParticipant
     public function afterClose(int $orderId): void
     {
         $this->before[$orderId] = $this->read($orderId);
+        if ($this->before[$orderId] === null) {
+            return;
+        }
+        // As the order page's close (RecurringInvoiceService::closeOrder()): generation
+        // refuses a closed order whatever the date.
         $this->end($orderId, DateConversion::fromFa(\Today()));
+        add_audit_trail(ST_SALESORDER, $orderId, \Today(), RecurringInvoiceService::CLOSED);
     }
 
     /**

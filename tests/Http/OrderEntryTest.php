@@ -126,10 +126,11 @@ class OrderEntryTest extends HttpTestCase
     {
         $orderNo = $this->copyOrder($this->unrecurredOrder());
         $ordered = $this->quantities($orderNo);
+        $twoMonthsAgo = (new \DateTime('first day of -2 months'))->format('Y-m-d');
         $lastMonth = (new \DateTime('first day of last month'))->format('Y-m-d');
         $thisMonth = (new \DateTime('first day of this month'))->format('Y-m-d');
-        $this->recurrence = $this->monthlyOnThe1st($orderNo, $lastMonth);
-        foreach ([$lastMonth, $thisMonth] as $date) {
+        $this->recurrence = $this->monthlyOnThe1st($orderNo, $twoMonthsAgo);
+        foreach ([$twoMonthsAgo, $lastMonth] as $date) {
             $out = $this->probe($orderNo, $date);
             $this->assertArrayNotHasKey('error', $out, $out['error'] ?? '');
         }
@@ -155,9 +156,13 @@ class OrderEntryTest extends HttpTestCase
         $schedule = SalesRecurringModel::readByTransNo($orderNo);
         $this->assertSame($this->today(), $schedule->dtEnd, 'the close ended the schedule today');
 
-        $out = $this->probe($orderNo, (string) $schedule->dtNext);
+        $this->assertSame($thisMonth, $schedule->dtNext, 'this month is due, and not after the end');
+
+        // Before the end (today), so refused because the order is closed.
+        $out = $this->probe($orderNo, $thisMonth);
 
         $this->assertSame('SGW_Sales\service\RecurrenceEnded', $out['errorClass'] ?? null, $out['error'] ?? '');
+        $this->assertStringContainsString('is closed', $out['error']);
         $this->assertSame($invoices, $this->invoiceCount($orderNo));
         $this->assertSame($deliveries, $this->deliveryCount($orderNo));
     }

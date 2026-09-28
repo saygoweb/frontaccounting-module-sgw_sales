@@ -708,12 +708,12 @@ function  handle_cancel_order()
 			$order_no = key($_SESSION['Items']->trans_no);
 			if (sales_order_has_deliveries($order_no))
 			{
-				// Closing sets each line to what was sent; the schedule ends today with it,
-				// in one transaction, as the GraphQL API's close ends it: a closed order
-				// must not be billed again (RecurringInvoiceService refuses it).
+				// Closing sets each line to what was sent; the schedule ends today and the
+				// close is recorded with it, in one transaction, as the GraphQL API's close
+				// does: a closed order must not be billed again (RecurringInvoiceService).
 				begin_transaction();
 				close_sales_order($order_no);
-				RecurringInvoiceService::endSchedule($order_no, date2sql(Today()));
+				RecurringInvoiceService::closeOrder($order_no, date2sql(Today()));
 				commit_transaction();
 				display_notification(_("Undelivered part of order has been cancelled as requested."), 1);
 				submenu_option(_("Select Another Sales Order for Edition"), "/sales/inquiry/sales_orders_view.php?type=".ST_SALESORDER);

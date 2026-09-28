@@ -18,6 +18,9 @@ use SGW_Sales\db\GenerateRecurringModel;
  */
 class RecurringInvoiceService
 {
+    /** The audit trail's record that an order was closed (closeOrder()). */
+    public const CLOSED = 'Closed: the undelivered part was cancelled';
+
     /**
      * Recurrences due on $asOf (all that have not ended, with $all), soonest first.
      *
@@ -40,7 +43,7 @@ class RecurringInvoiceService
      * @param bool $allowEarly invoice an order that is not yet due (the page's
      *   "Show All", where a person picks it); never from the API
      * @throws RecurrenceNotFound the order has no recurrence, or no longer exists
-     * @throws RecurrenceEnded the recurrence has ended by $invoiceDate, or by today
+     * @throws RecurrenceEnded the recurrence has ended by $invoiceDate, or the order is closed
      * @throws RecurrenceNotDue not due on $invoiceDate (and not $allowEarly), or the
      *   period already billed (early generation bills the current period once)
      * @throws GenerationRefused a check refused it; nothing was written
@@ -59,11 +62,13 @@ class RecurringInvoiceService
             if ($recurrence === null || !self::salesOrderExists($orderNo)) {
                 throw new RecurrenceNotFound("Sales order $orderNo has no recurrence");
             }
-            // Ended by $invoiceDate, or by today whatever the date asked: a close ends
-            // the schedule today (the API's and the order page's), and a closed order's
-            // lines hold everything sent so far - no run may bill it again.
-            $today = date2sql(Today());
-            if ($recurrence->dtEnd && ($recurrence->dtEnd <= $ymd || $recurrence->dtEnd <= $today)) {
+            // A closed order's lines hold everything sent so far: no run may bill it
+            // again, whatever the date.
+            if (self::isClosed($orderNo)) {
+                throw new RecurrenceEnded("Sales order $orderNo is closed: its recurrence bills no more.");
+            }
+            // A late run may bill a period that began before the end (the due list's rule).
+            if ($recurrence->dtEnd && $recurrence->dtEnd <= $ymd) {
                 throw new RecurrenceEnded("The recurrence of sales order $orderNo ended on " . $recurrence->dtEnd);
             }
             if ($recurrence->every < 1 || $recurrence->every > 127) {
@@ -266,6 +271,51 @@ class RecurringInvoiceService
             . " AND (dt_end IS NULL OR dt_end > $date)",
             'The recurrence could not be ended'
         );
+    }
+
+    /**
+     * What closing $orderNo means for its recurrence, in the close's transaction:
+     * the schedule ends on $ymd, and the close is recorded in the audit trail, which
+     * generate() reads - FrontAccounting's close leaves nothing else to tell a closed
+     * order by. For the order page's close; the API's close does the same through
+     * the GraphQL extension's RecurrenceParticipant.
+     */
+    public static function closeOrder(int $orderNo, string $ymd): void
+    {
+        self::endSchedule($orderNo, $ymd);
+        add_audit_trail(ST_SALESORDER, $orderNo, sql2date($ymd), self::CLOSED);
+    }
+
+    /**
+     * Closed: recorded so (closeOrder()), or - an order closed by FrontAccounting's own
+     * page, or before the close was recorded - every line's quantity is what was sent
+     * after more than one delivery, which a recurring order delivered whole each
+     * period only shows once FrontAccounting's close has set it so.
+     */
+    private static function isClosed(int $orderNo): bool
+    {
+        $recorded = db_fetch(db_query(
+            'SELECT 1 FROM ' . TB_PREF . 'audit_trail WHERE type=' . ST_SALESORDER
+            . ' AND trans_no=' . db_escape($orderNo) . ' AND description=' . db_escape(self::CLOSED) . ' LIMIT 1',
+            'The audit trail could not be read'
+        ));
+        if ($recorded) {
+            return true;
+        }
+        $lines = db_fetch(db_query(
+            'SELECT SUM(quantity <> qty_sent) AS open, SUM(qty_sent) AS sent FROM ' . TB_PREF . 'sales_order_details'
+            . ' WHERE trans_type=' . ST_SALESORDER . ' AND order_no=' . db_escape($orderNo),
+            'The sales order could not be read'
+        ));
+        if (!$lines || (int) $lines['open'] > 0 || (float) $lines['sent'] <= 0) {
+            return false;
+        }
+        $deliveries = db_fetch(db_query(
+            'SELECT COUNT(*) FROM ' . TB_PREF . 'debtor_trans WHERE type=' . ST_CUSTDELIVERY
+            . ' AND order_=' . db_escape($orderNo),
+            'The deliveries could not be read'
+        ));
+        return (int) $deliveries[0] > 1;
     }
 
     /** Due on $ymd: next date reached, or never generated and already started. */

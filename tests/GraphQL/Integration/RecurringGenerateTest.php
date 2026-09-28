@@ -199,6 +199,7 @@ class RecurringGenerateTest extends RecurringGenerationTestCase
         $result = $this->generate([['orderId' => (string) $orderNo, 'date' => $thisMonth]]);
 
         $this->assertSame('ENDED', $result['data']['recurringGenerate'][0]['error']['code'] ?? null);
+        $this->assertStringContainsString('is closed', $result['data']['recurringGenerate'][0]['error']['message']);
         $this->assertSame($invoices, $this->invoicesFor($orderNo));
         $this->assertSame($thisMonth, $this->dtNext($orderNo));
     }
