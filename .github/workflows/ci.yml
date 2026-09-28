@@ -113,7 +113,7 @@ jobs:
         run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql up --build
       - name: The extension suites
         working-directory: graphql
-        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql exec php vendor/bin/phpunit -c /var/www/html/modules/sgw_sales/phpunit-graphql.xml
+        run: SGW_SALES_PATH=${{ github.workspace }}/sgw_sales docker/fa-graphql test-extension sgw_sales --fail-on-skipped
       - name: Container logs
         if: failure()
         working-directory: graphql

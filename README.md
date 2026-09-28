@@ -65,14 +65,15 @@ schedule on sales orders (`salesOrderList`, `salesOrderCreate`, `salesOrderUpdat
 written in the order's own transaction. The code is `includes/GraphQL/`, registered
 by `hooks_sgw_sales::graphql_extensions()`. Without that module nothing of it loads.
 
-Its tests run inside the GraphQL module's docker stack, against this checkout
-(`SGW_SALES_PATH` must be absolute: the stack's compose files resolve a relative
-path against its `docker/` directory):
+Its tests (`phpunit-graphql.xml`) run inside the GraphQL module's docker stack,
+against this checkout mounted over the stack's clone, with no skips:
 
     cd ../graphql
-    SGW_SALES_PATH=$PWD/../sgw_sales docker/fa-graphql up --recreate
-    SGW_SALES_PATH=$PWD/../sgw_sales docker/fa-graphql exec php vendor/bin/phpunit \
-        -c /var/www/html/modules/sgw_sales/phpunit-graphql.xml
+    export SGW_SALES_PATH=../sgw_sales
+    docker/fa-graphql up --recreate
+    docker/fa-graphql test-extension sgw_sales --fail-on-skipped
+
+(`docker/fa-graphql ci` runs them too, after the module's own suite.)
 
 Activating this module now applies `sql/update_1.4.sql` as well as
 `update_1.0.sql`. A company activated before must be re-activated (Setup →
