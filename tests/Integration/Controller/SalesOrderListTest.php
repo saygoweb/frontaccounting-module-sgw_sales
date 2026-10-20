@@ -430,6 +430,93 @@ class SalesOrderListTest extends FaTestCase
         $this->assertSame(1, $this->orderType($template));
     }
 
+    public function testUpdateMakesTheTemplatesWhatTheirBoxesShow(): void
+    {
+        $order = $this->orderOfType(0);
+        $template = $this->orderOfType(1);
+        $_POST['Update'] = 'Update';
+        $_POST['last'] = [$order => 0, $template => 1];
+        $_POST['chgtpl' . $order] = 1;
+
+        $this->runList();
+
+        $this->assertSame(1, $this->orderType($order));
+        $this->assertSame(0, $this->orderType($template));
+    }
+
+    /**
+     * A quotation sharing an order's number, dated today, with a line of its own:
+     * a copy of the order's header and lines.
+     */
+    private function quoteLike(int $orderNo, string $description): void
+    {
+        foreach (['sales_orders', 'sales_order_details'] as $table) {
+            $rows = $this->pdo()->query(
+                'SELECT * FROM ' . DB::prefix($table) . " WHERE trans_type=" . ST_SALESORDER . " AND order_no=$orderNo"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            foreach ($rows as $row) {
+                unset($row['id']);
+                $row['trans_type'] = ST_SALESQUOTE;
+                if ($table === 'sales_orders') {
+                    $row['ord_date'] = date('Y-m-d');
+                    $row['reference'] = 'quote of ' . $orderNo;
+                } else {
+                    $row['description'] = $description;
+                }
+                $columns = array_keys($row);
+                $this->pdo()->prepare(
+                    'INSERT INTO ' . DB::prefix($table) . ' (`' . implode('`, `', $columns) . '`)'
+                    . ' VALUES (:' . implode(', :', $columns) . ')'
+                )->execute($row);
+            }
+        }
+    }
+
+    public function testQuotationsAndOrdersAreListedApart(): void
+    {
+        $orderNo = max($this->orderNos('1=1'));
+        $this->quoteLike($orderNo, 'Quoted only');
+        $orders = $this->orderNos('so.trans_type=' . ST_SALESORDER);
+        $_POST['OrdersAfterDate'] = sql2date('2000-01-01');
+        $_POST['OrdersToDate'] = sql2date(date('Y-m-d'));
+
+        $this->runList();
+        $this->assertSame($orders, $this->listed());
+        $this->assertSame(count($orders), (int) $this->table->rec_count);
+
+        $_GET['type'] = ST_SALESQUOTE;
+        $this->runList();
+        $this->assertSame([$orderNo], $this->listed());
+        $this->assertSame(1, (int) $this->table->rec_count);
+    }
+
+    public function testAnOrderIsNotFoundByItsQuotationsLines(): void
+    {
+        $orderNo = max($this->orderNos('1=1'));
+        $this->quoteLike($orderNo, 'Quoted only');
+        $_POST['Domain'] = 'Quoted only';
+
+        $this->runList();
+
+        $this->assertSame([], $this->listed());
+        $this->assertSame(0, (int) $this->table->rec_count);
+    }
+
+    public function testADomainCountsEachOrderOnceHoweverManyOfItsLinesMatch(): void
+    {
+        $lines = (int) $this->pdo()->query(
+            'SELECT COUNT(*) FROM ' . DB::prefix('sales_order_details') . " WHERE description LIKE '%i%'"
+        )->fetchColumn();
+        $expected = $this->orderNos("sd.description LIKE '%i%'");
+        $this->assertGreaterThan(count($expected), $lines, 'some demo order has two lines with an i');
+        $_POST['Domain'] = 'i';
+
+        $this->runList();
+
+        $this->assertSame(count($expected), (int) $this->table->rec_count);
+        $this->assertSame($expected, $this->listed());
+    }
+
     public function testANumberTypedDisablesTheDatesAndRefreshesTheTable(): void
     {
         $ajax = $this->ajax();

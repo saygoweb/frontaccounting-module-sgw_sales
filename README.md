@@ -30,6 +30,8 @@ A module for Front Accounting that provides recurring invoicing for sales orders
    [Anorm](https://github.com/saygoweb/anorm) 3.2, which sets that floor.
  - FrontAccounting 2.4. It is developed against the
    [cambell-prince fork](https://github.com/cambell-prince/frontaccounting) at `master-cp`.
+   The Sales Order Inquiry needs that fork: its list renders through the fork's
+   `ControlRenderer`, and on upstream FrontAccounting the page says so instead of listing.
  - `composer install --no-dev` in the module directory; the release packages ship with `vendor/` in place.
  - Activating the extension creates and upgrades its table (`sql/update_1.0.sql`, then
    `sql/update_1.4.sql`); an install activated before this release should be

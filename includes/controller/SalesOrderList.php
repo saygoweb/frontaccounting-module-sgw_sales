@@ -89,7 +89,7 @@ class SalesOrderList {
         if (isset($_POST['Update']) && isset($_POST['last'])) {
             foreach($_POST['last'] as $id => $value)
                 if ($value != check_value('chgtpl'.$id))
-                    sales_order_set_template($id, !check_value('chgtpl'.$id));
+                    sales_order_set_template($id, check_value('chgtpl'.$id));
         }
         
         $show_dates = !in_array($_POST['order_view_mode'], array('OutstandingOnly', 'InvoiceTemplates', 'DeliveryTemplates'));
@@ -181,7 +181,8 @@ class SalesOrderList {
             get_post('Domain'),
             get_post('OrdersAfterDate'),
             get_post('OrdersToDate'),
-            get_post('customer_id')
+            get_post('customer_id'),
+            $this->trans_type
         );
         $query = SalesOrderListModel::queryByFilter(
             get_post('OrderNumber'),
@@ -189,7 +190,8 @@ class SalesOrderList {
             get_post('Domain'),
             get_post('OrdersAfterDate'),
             get_post('OrdersToDate'),
-            get_post('customer_id')
+            get_post('customer_id'),
+            $this->trans_type
         );
         $table = new ModelPager('orders_tbl', SalesOrderListModel::class, $query, $count, $cols);
 
