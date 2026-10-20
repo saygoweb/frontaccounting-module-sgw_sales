@@ -27,7 +27,7 @@ class GenerateRecurringModel extends Model {
 	 * @param \DateTimeInterface|null $asOf today by default
 	 * @param \PDO|null $pdo the connection to read on; Anorm's default by default.
 	 *   The GraphQL extension passes its request's connection (the token's company).
-	 * @return \Generator<GenerateRecurringModel>|GenerateRecurringModel[]|boolean
+	 * @return \Generator<GenerateRecurringModel>|GenerateRecurringModel[]|bool
 	 */
 	public static function find($showAll, ?\DateTimeInterface $asOf = null, ?\PDO $pdo = null) {
 		$pdo = $pdo ?: Anorm::pdo();

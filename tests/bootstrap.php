@@ -1,12 +1,15 @@
 <?php
 
+// With the GraphQL module beside this one (the CI image and dev environments),
+// its autoloader last, as FrontAccounting loads them when graphql is registered
+// after sgw_sales: Composer prepends each autoloader it loads, so graphql's Anorm
+// is the one every model gets (see tools/ci.sh). Its Bootstrap also loads
+// FrontAccounting for the integration suite. The unit suite needs only ours.
 require_once __DIR__ . '/../vendor/autoload.php';
-
-// FrontAccounting's transaction types (includes/types.inc). The models name them
-// in their SQL, and the suite runs without FrontAccounting loaded.
-defined('ST_SALESINVOICE') || define('ST_SALESINVOICE', 10);
-defined('ST_CUSTDELIVERY') || define('ST_CUSTDELIVERY', 13);
-defined('ST_SALESORDER') || define('ST_SALESORDER', 30);
+$graphql = dirname(__DIR__, 2) . '/graphql/vendor/autoload.php';
+if (is_file($graphql)) {
+    require_once $graphql;
+}
 
 // The comment on a generated invoice is translated.
 if (!function_exists('_')) {

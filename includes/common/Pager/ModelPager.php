@@ -14,6 +14,15 @@ use Anorm\QueryBuilder;
     See the License here <http://www.gnu.org/licenses/gpl-3.0.html>.
  ***********************************************************************/
 
+/**
+ * The page numbers, read through __get() from $pagerData.
+ * @property-read int|null $curr_page
+ * @property-read int|null $max_page
+ * @property-read int|null $last_page
+ * @property-read int|null $prev_page
+ * @property-read int|null $next_page
+ * @property-read int|null $first_page
+ */
 class ModelPager /*extends db_pager */ implements PagerInterface
 {
     var $name;

@@ -6,6 +6,7 @@ use Anorm\Anorm;
 use PHPUnit\Framework\TestCase;
 use SGW_Sales\db\DB;
 use SGW_Sales\db\SalesRecurringModel;
+use SGW_Sales\Tests\Support\FaTypes;
 
 /**
  * A logged-in FrontAccounting session over HTTP, at FA_URL.
@@ -40,6 +41,7 @@ abstract class HttpTestCase extends TestCase
 
     protected function setUp(): void
     {
+        FaTypes::define();
         self::$base = rtrim((string) getenv('FA_URL'), '/');
         if (!self::$base) {
             $this->markTestSkipped('FA_URL is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)');
@@ -131,7 +133,9 @@ abstract class HttpTestCase extends TestCase
     protected function connectDb(): void
     {
         if (!getenv('FA_DB_HOST')) {
-            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)');
+            $this->markTestSkipped(
+                'FA_DB_HOST is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)'
+            );
         }
         Anorm::connect(
             Anorm::DEFAULT,
@@ -183,7 +187,8 @@ abstract class HttpTestCase extends TestCase
     protected function invoiceCount(int $orderNo): int
     {
         $statement = Anorm::pdo()->prepare(
-            'SELECT COUNT(*) FROM ' . DB::prefix('debtor_trans') . ' WHERE type=' . ST_SALESINVOICE . ' AND order_=:order'
+            'SELECT COUNT(*) FROM ' . DB::prefix('debtor_trans')
+            . ' WHERE type=' . ST_SALESINVOICE . ' AND order_=:order'
         );
         $statement->execute([':order' => $orderNo]);
         return (int) $statement->fetchColumn();
@@ -223,7 +228,11 @@ abstract class HttpTestCase extends TestCase
     protected function assertRendered(int $status, string $html): void
     {
         $this->assertSame(200, $status);
-        $this->assertStringNotContainsString('name="user_name_entry_field"', $html, 'got the login form: the login did not take');
+        $this->assertStringNotContainsString(
+            'name="user_name_entry_field"',
+            $html,
+            'got the login form: the login did not take'
+        );
         $this->assertDoesNotMatchRegularExpression('/Fatal error|Uncaught|DATABASE ERROR|class=.err_msg/i', $html);
     }
 

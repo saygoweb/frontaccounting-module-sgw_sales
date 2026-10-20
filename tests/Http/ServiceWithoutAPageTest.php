@@ -157,23 +157,27 @@ class ServiceWithoutAPageTest extends HttpTestCase
     public function testAnOrderTheStockCannotCoverIsRefusedAndNothingIsWritten(): void
     {
         // FrontAccounting's own check (Cart::check_qoh) where negative stock is not
-        // allowed: a stock-held line asking for more than its location holds.
-        $orderNo = (int) Anorm::pdo()->query(
-            'SELECT so.order_no FROM ' . DB::prefix('sales_orders') . ' AS so'
-            . ' JOIN ' . DB::prefix('sales_order_details') . ' AS line'
-            . ' ON line.order_no=so.order_no AND line.trans_type=so.trans_type'
+        // allowed: a copy of an order for a stock-held item, asking for more than
+        // any location holds.
+        $this->assertSame('0', (string) Anorm::pdo()->query(
+            'SELECT value FROM ' . DB::prefix('sys_prefs') . " WHERE name='allow_negative_stock'"
+        )->fetchColumn(), 'the loaded dataset does not allow negative stock');
+        $stocked = Anorm::pdo()->query(
+            'SELECT line.order_no FROM ' . DB::prefix('sales_order_details') . ' AS line'
             . ' JOIN ' . DB::prefix('stock_master') . ' AS item ON item.stock_id=line.stk_code'
-            . " AND item.mb_flag IN ('B', 'M')"
-            . ' WHERE so.trans_type=' . ST_SALESORDER
-            . ' AND so.order_no NOT IN (SELECT trans_no FROM ' . DB::prefix('sales_recurring') . ')'
-            . ' AND (SELECT value FROM ' . DB::prefix('sys_prefs') . " WHERE name='allow_negative_stock') = 0"
-            . ' AND line.quantity > (SELECT COALESCE(SUM(qty), 0) FROM ' . DB::prefix('stock_moves') . ' AS m'
-            . ' WHERE m.stock_id=line.stk_code AND m.loc_code=so.from_stk_loc)'
-            . ' ORDER BY so.order_no LIMIT 1'
+            . ' WHERE line.trans_type=' . ST_SALESORDER . " AND item.mb_flag IN ('B', 'M')"
+            . " AND line.order_no NOT IN (SELECT order_no FROM " . DB::prefix('sales_orders')
+            . " WHERE customer_ref='" . self::COPY_MARK . "')"
+            . ' ORDER BY line.order_no LIMIT 1'
         )->fetchColumn();
-        if (!$orderNo) {
-            $this->markTestSkipped('no order in the loaded dataset asks for more stock than it holds');
-        }
+        $this->assertNotFalse($stocked, 'the loaded dataset has an order for a stock-held item');
+        $orderNo = $this->copyOrder((int) $stocked);
+        Anorm::pdo()->exec(
+            'UPDATE ' . DB::prefix('sales_order_details') . ' AS line'
+            . ' JOIN ' . DB::prefix('stock_master') . ' AS item ON item.stock_id=line.stk_code'
+            . " SET line.quantity=1000000 WHERE item.mb_flag IN ('B', 'M')"
+            . ' AND line.trans_type=' . ST_SALESORDER . " AND line.order_no=$orderNo"
+        );
         $this->recurrence = $this->dueMonthly($orderNo);
         $invoices = $this->invoiceCount($orderNo);
         $deliveries = $this->deliveryCount($orderNo);

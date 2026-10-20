@@ -15,9 +15,19 @@
 		<testsuite name="db">
 			<directory>tests/Db</directory>
 		</testsuite>
+		<!-- FrontAccounting loaded in-process (by the GraphQL module's Bootstrap), and the database. Needs the FrontAccounting CI image. -->
+		<testsuite name="integration">
+			<directory>tests/Integration</directory>
+		</testsuite>
 		<!-- Drives Apache over HTTP; needs FA_URL (the docker stack sets it). -->
 		<testsuite name="http">
 			<directory>tests/Http</directory>
 		</testsuite>
 	</testsuites>
+	<!-- Measured only when a coverage driver is loaded: tools/coverage.sh. -->
+	<coverage>
+		<include>
+			<directory suffix=".php">includes</directory>
+		</include>
+	</coverage>
 </phpunit>

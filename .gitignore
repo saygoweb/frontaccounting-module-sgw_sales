@@ -15,3 +15,6 @@ log/
 
 # tests/Http/ServiceWithoutAPageTest puts this here for the length of a test
 /test-service-probe.php
+
+# tools/coverage.sh's Clover reports
+/build/

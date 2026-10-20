@@ -1,8 +1,9 @@
 name: CI
 
 # Runs in the FrontAccounting CI image (cambell-prince/frontaccounting
-# docker/ci) on FrontAccounting's demo company: the module's own suites, and
-# its GraphQL-extension suite with graphql activated alongside.
+# docker/ci) on FrontAccounting's demo company, with graphql activated
+# alongside, as they are deployed: the module's own suites (tools/ci.sh), its
+# GraphQL-extension suite (tools/ci-graphql.sh), and coverage from one cell.
 
 on:
   push:
@@ -25,13 +26,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        fa: [cp, upstream]
         php: ['7.4', '8.3']
     uses: cambell-prince/frontaccounting/.github/workflows/plugin-test.yml@master-cp
     with:
-      fa: cp
+      fa: ${{ matrix.fa }}
       php: ${{ matrix.php }}
       dataset: demo
       setup: composer install --no-interaction --no-progress
+      # Activated with the module it is deployed with: they share one PHP
+      # process, and so one Anorm (see tools/ci.sh). graphql's Bootstrap also
+      # loads FrontAccounting for the integration suite.
+      with: |
+        graphql=https://github.com/saygoweb/frontaccounting-module-graphql.git@main
       test: sh tools/ci.sh
 
   graphql-extension:
@@ -49,3 +56,19 @@ jobs:
       with: |
         graphql=https://github.com/saygoweb/frontaccounting-module-graphql.git@main
       test: sh tools/ci-graphql.sh
+
+  # Coverage for the README's badge: tools/coverage.sh in one cell, both its
+  # Clover reports sent to Codecov by plugin-test.yml.
+  coverage:
+    uses: cambell-prince/frontaccounting/.github/workflows/plugin-test.yml@master-cp
+    with:
+      fa: cp
+      php: '8.3'
+      dataset: demo
+      setup: composer install --no-interaction --no-progress && (cd ../graphql && composer install --no-interaction --no-progress)
+      with: |
+        graphql=https://github.com/saygoweb/frontaccounting-module-graphql.git@main
+      test: sh tools/coverage.sh
+      coverage: build/coverage.xml,build/coverage-graphql.xml
+    secrets:
+      codecov-token: ${{ secrets.CODECOV_TOKEN }}

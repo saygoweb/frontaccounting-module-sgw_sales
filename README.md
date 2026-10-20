@@ -1,6 +1,7 @@
 # FrontAccounting Module: sgw_sales
 
-[![CI](https://github.com/saygoweb/frontaccounting-module-sgw_sales/actions/workflows/ci.yml/badge.svg)](https://github.com/saygoweb/frontaccounting-module-sgw_sales/actions/workflows/ci.yml)
+[![CI](https://github.com/saygoweb/frontaccounting-module-sgw_sales/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/saygoweb/frontaccounting-module-sgw_sales/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/saygoweb/frontaccounting-module-sgw_sales/branch/master/graph/badge.svg)](https://codecov.io/gh/saygoweb/frontaccounting-module-sgw_sales)
 
 A module for Front Accounting that provides recurring invoicing for sales orders.
 
@@ -160,16 +161,32 @@ the schedule reads as never generated and is due again from its start.
 
 ## Development ##
 
-CI runs `tools/ci.sh` (lint, analyze, phpunit) and `tools/ci-graphql.sh` (the
-GraphQL-extension suite, with graphql activated first) in the FrontAccounting
-CI image
+CI runs in the FrontAccounting CI image
 ([cambell-prince/frontaccounting `docker/ci`](https://github.com/cambell-prince/frontaccounting/tree/master-cp/docker/ci)),
-on FrontAccounting's demo company; role 2 gets the module's areas through
-`fa-ci-grant`. With that repository checked out beside this one, the same
-runs locally are:
+on FrontAccounting's demo company, with graphql activated alongside, as they are
+deployed, for FrontAccounting cp and upstream on PHP 7.4 and 8.3; role 2 gets the
+module's areas through `fa-ci-grant`. `tools/ci.sh` runs:
+
+- `composer run quality`: `php -l`, PSR-12 (phpcs) over `includes/service`,
+  `includes/GraphQL` and `tests/`, and PHPStan level 5 (existing findings are in
+  `phpstan-baseline.neon`).
+- A check that every model loads with graphql's autoloader last, so its Anorm wins.
+- The PHPUnit suites (`phpunit.xml`), with no skips:
+  - `unit`: no FrontAccounting, no database.
+  - `db`: the models through Anorm against the database, rolled back.
+  - `integration`: FrontAccounting loaded in-process by the GraphQL module's
+    Bootstrap: the controllers with their views mocked, the list pager, and
+    invoice generation through `RecurringInvoiceService`.
+  - `http`: the pages in Apache: order entry, the inquiry, and generating (and
+    emailing) recurring invoices.
+
+`tools/ci-graphql.sh` runs the GraphQL-extension suite (`phpunit-graphql.xml`)
+with graphql's PHPUnit, after graphql's seed. Tests remove every row they write.
+With that repository checked out beside this one, the same runs locally are:
 
     ../frontaccounting/docker/ci/plugin-test.sh --dataset demo \
       --setup 'composer install --no-interaction --no-progress' \
+      --with graphql=https://github.com/saygoweb/frontaccounting-module-graphql.git@main \
       . -- sh tools/ci.sh
 
     ../frontaccounting/docker/ci/plugin-test.sh --dataset demo \
@@ -177,4 +194,6 @@ runs locally are:
       --with graphql=https://github.com/saygoweb/frontaccounting-module-graphql.git@main \
       . -- sh tools/ci-graphql.sh
 
-GitHub Actions runs the same commands on PHP 7.4 and 8.3.
+`tools/coverage.sh`, with the second command's setup, measures the unit, db and
+integration suites and the GraphQL-extension suite into `build/coverage.xml` and
+`build/coverage-graphql.xml`; CI sends both to Codecov.

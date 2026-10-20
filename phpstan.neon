@@ -1,5 +1,9 @@
+includes:
+    # What includes/ and tests/ had before level 5 did. New code gets none.
+    - phpstan-baseline.neon
+
 parameters:
-    level: 0
+    level: 5
 
     # FrontAccounting is a .inc codebase. Without this, scanDirectories below
     # finds almost none of it and every FA function is "function not found".
@@ -7,17 +11,27 @@ parameters:
         - php
         - inc
 
-    # The namespaced code. The pages at the root are FrontAccounting page
-    # scripts: globals in, HTML out, nothing here to hold them to.
+    # The namespaced code and the tests. The pages at the root are
+    # FrontAccounting page scripts: globals in, HTML out, nothing here to hold
+    # them to.
     paths:
         - includes/common
         - includes/controller
         - includes/db
         - includes/service
+        - includes/GraphQL
+        - tests
+
+    excludePaths:
+        # FrontAccounting's own config, copied.
+        - tests/data
+        # They extend the GraphQL module's own test bases, which its --no-dev
+        # install in CI leaves out; they run in its stack (tools/ci-graphql.sh).
+        - tests/GraphQL
 
     # FrontAccounting itself, two directories up: this module lives at
     # modules/sgw_sales inside an FA tree, and that is equally true inside the
-    # docker stack, where the checkout is bind-mounted at
+    # FrontAccounting CI image, where the checkout is mounted at
     # /var/www/html/modules/sgw_sales. Only the areas this module calls into are
     # listed, so a missing directory is a real signal rather than noise.
     scanDirectories:
@@ -25,3 +39,13 @@ parameters:
         - ../../includes
         - ../../sales
         - ../../reporting
+
+    scanFiles:
+        # The pages, for the view classes the controllers call.
+        - generate_recurring_invoices.php
+        - inquiry/sales_orders_view.php
+
+    # The GraphQL module's autoloader, for includes/GraphQL and the integration
+    # tests, when graphql is beside this module (tests/bootstrap.php).
+    bootstrapFiles:
+        - tests/bootstrap.php
