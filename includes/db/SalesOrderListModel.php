@@ -67,7 +67,7 @@ class SalesOrderListModel extends Model {
         return $result;
     }
     
-    /** @return Generator<SalesOrderListModel>|SalesOrderListModel[]|boolean */
+    /** @return \Generator<SalesOrderListModel>|SalesOrderListModel[]|bool */
     public static function findByQuery(QueryBuilder $queryBuilder, int $recordCount, int $offset) {
         return $queryBuilder
             ->limit($recordCount, $offset)

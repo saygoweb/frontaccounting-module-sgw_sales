@@ -37,6 +37,7 @@
         "analyze": "phpstan analyse --no-progress --memory-limit=512M",
         "quality": [
             "@lint",
+            "@cs:check",
             "@analyze"
         ],
         "ci": [
@@ -46,12 +47,12 @@
         "package": "make.phar package"
     },
     "scripts-descriptions": {
-        "test": "Run the PHPUnit suite. The db and http tests need a database and the module served from a FrontAccounting install - tools/ci.sh, run in the FrontAccounting CI image, provides both.",
+        "test": "Run the PHPUnit suites. db, integration and http need FrontAccounting, its database and the GraphQL module beside this one - tools/ci.sh, run in the FrontAccounting CI image, provides them.",
         "lint": "php -l over every PHP and .inc file in the module.",
-        "cs:check": "Check includes/db, includes/common and tests/ against PSR-12 (phpcs.xml). Not yet clean, so it is deliberately not part of quality/ci; tools/ci.sh reports it without failing.",
+        "cs:check": "Check includes/service, includes/GraphQL and tests/ against PSR-12 (phpcs.xml).",
         "cs:fix": "Fix what phpcbf can fix automatically.",
-        "analyze": "Run PHPStan over includes/ (phpstan.neon).",
-        "quality": "lint, then analyze - the two static gates.",
+        "analyze": "Run PHPStan at level 5 over includes/ and tests/ (phpstan.neon, with its baseline).",
+        "quality": "lint, cs:check, then analyze - the static gates.",
         "ci": "quality, then test - the same gates tools/ci.sh runs in CI.",
         "package": "Build the release zip and tarball (needs make.phar; see README)."
     }

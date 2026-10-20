@@ -5,7 +5,7 @@ interface PagerInterface {
 
     function select_records();
 
-    /** @return Generator */
+    /** @return iterable<object>|bool the page's records (Anorm's some(): false for none) */
     function generator();
 
     // Expected properties

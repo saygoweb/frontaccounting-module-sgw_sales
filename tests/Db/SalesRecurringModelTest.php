@@ -62,7 +62,9 @@ class SalesRecurringModelTest extends DbTestCase
     {
         // sales_order_entry.php fills the model straight from $_POST.
         $m = new SalesRecurringModel();
-        $post = ['trans_no' => '12', 'repeats' => 'month', 'every' => '2', 'dt_start' => '01/02/2016', 'unrelated' => 'x'];
+        $post = [
+            'trans_no' => '12', 'repeats' => 'month', 'every' => '2', 'dt_start' => '01/02/2016', 'unrelated' => 'x',
+        ];
         $m->mapper()->readArray($m, $post, ['dtLast', 'dtStart', 'dtEnd']);
         $this->assertSame('12', $m->transNo);
         $this->assertSame('month', $m->repeats);

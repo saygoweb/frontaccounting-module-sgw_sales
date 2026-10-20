@@ -4,15 +4,14 @@
 
     <rule ref="PSR12"/>
 
-    <!-- The namespaced classes and the tests. The pages at the root, view/,
-         inquiry/ and includes/ui are FrontAccounting-style code - procedural,
-         tab-indented, sales_order_entry.php a patched copy of FA's own - and
-         measuring them against PSR-12 produces violations nobody intends to
-         fix. php -l covers them (composer lint). -->
-    <file>includes/common</file>
-    <file>includes/controller</file>
-    <file>includes/db</file>
+    <!-- What already follows it, and so is held to it: the service and the
+         GraphQL extension, and the tests; new code follows it too. The pages at
+         the root, view/, inquiry/ and includes/ui are FrontAccounting-style code
+         - procedural, tab-indented, sales_order_entry.php a patched copy of FA's
+         own - and includes/common, includes/controller and includes/db predate
+         the standard. php -l covers them all (composer lint). -->
     <file>includes/service</file>
+    <file>includes/GraphQL</file>
     <file>tests</file>
 
     <!-- FrontAccounting's own fixture config, copied from FA and formatted like

@@ -11,8 +11,14 @@ class PagesTest extends HttpTestCase
     public function pages(): array
     {
         return [
-            'order entry' => ['/modules/sgw_sales/sales_order_entry.php?NewOrder=Yes', 'New Sales Order Entry', "name='sale_recurring'"],
-            'generate recurring' => ['/modules/sgw_sales/generate_recurring_invoices.php', 'Create and Print Recurrent Invoices', 'GenerateInvoices'],
+            'order entry' => [
+                '/modules/sgw_sales/sales_order_entry.php?NewOrder=Yes', 'New Sales Order Entry',
+                "name='sale_recurring'",
+            ],
+            'generate recurring' => [
+                '/modules/sgw_sales/generate_recurring_invoices.php', 'Create and Print Recurrent Invoices',
+                'GenerateInvoices',
+            ],
             'order inquiry' => ['/modules/sgw_sales/inquiry/sales_orders_view.php?type=30', null, 'orders_tbl'],
         ];
     }
@@ -31,7 +37,8 @@ class PagesTest extends HttpTestCase
 
     public function testMenuOffersTheModule(): void
     {
-        // Needs the role to hold the module's security areas; `fa-ci-grant --role 2 --module sgw_sales` grants them (tools/ci.sh).
+        // Needs the role to hold the module's security areas; `fa-ci-grant --role 2 --module sgw_sales`
+        // grants them (tools/ci.sh).
         [$status, $html] = $this->request('/index.php?application=orders');
 
         $this->assertRendered($status, $html);

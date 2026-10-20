@@ -25,13 +25,13 @@ class RecurrenceSchedule
         switch ($model->repeats) {
             case SalesRecurringModel::REPEAT_YEARLY:
                 $occurParts = explode('-', $model->occur);
-                $result->setDate($date->format('Y'), $occurParts[0], $occurParts[1]);
+                $result->setDate((int) $date->format('Y'), (int) $occurParts[0], (int) $occurParts[1]);
                 while ($result > $date) {
                     $result->sub(new \DateInterval("P1Y"));
                 }
                 break;
             case SalesRecurringModel::REPEAT_MONTHLY:
-                $result->setDate($date->format('Y'), $date->format('m'), $model->occur);
+                $result->setDate((int) $date->format('Y'), (int) $date->format('m'), (int) $model->occur);
                 while ($result > $date) {
                     $result->sub(new \DateInterval("P1M"));
                 }
@@ -52,13 +52,13 @@ class RecurrenceSchedule
         switch ($model->repeats) {
             case SalesRecurringModel::REPEAT_YEARLY:
                 $occurParts = explode('-', $model->occur);
-                $result->setDate($date->format('Y'), $occurParts[0], $occurParts[1]);
+                $result->setDate((int) $date->format('Y'), (int) $occurParts[0], (int) $occurParts[1]);
                 while ($result < $date) {
                     $result->add(new \DateInterval("P1Y"));
                 }
                 break;
             case SalesRecurringModel::REPEAT_MONTHLY:
-                $result->setDate($date->format('Y'), $date->format('m'), $model->occur);
+                $result->setDate((int) $date->format('Y'), (int) $date->format('m'), (int) $model->occur);
                 while ($result < $date) {
                     $result->add(new \DateInterval("P1M"));
                 }
@@ -134,7 +134,7 @@ class RecurrenceSchedule
         switch ($model->repeats) {
             case SalesRecurringModel::REPEAT_YEARLY:
                 $parts = explode('-', $model->dtStart);
-                $startDate->setDate($today->format('Y'), $parts[1], $parts[2]);
+                $startDate->setDate((int) $today->format('Y'), (int) $parts[1], (int) $parts[2]);
                 $interval = $today->diff($startDate, true); // absolute so always positive
                 if ($interval->days > 365 / 2) {
                     $startDate->add(new \DateInterval("P1Y"));
@@ -145,7 +145,7 @@ class RecurrenceSchedule
                 break;
             case SalesRecurringModel::REPEAT_MONTHLY:
                 $parts = explode('-', $model->dtStart);
-                $startDate->setDate($today->format('Y'), $today->format('m'), $parts[2]);
+                $startDate->setDate((int) $today->format('Y'), (int) $today->format('m'), (int) $parts[2]);
                 // The below is likely wrong, but currently unused.
                 while ($startDate > $today) {
                     $startDate->sub(new \DateInterval("P1M"));

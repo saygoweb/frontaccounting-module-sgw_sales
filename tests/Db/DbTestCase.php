@@ -5,6 +5,7 @@ namespace SGW_Sales\Tests\Db;
 use Anorm\Anorm;
 use PHPUnit\Framework\TestCase;
 use SGW_Sales\db\DB;
+use SGW_Sales\Tests\Support\FaTypes;
 
 /**
  * Connects Anorm the way hooks.php does, from the environment the docker stack
@@ -12,7 +13,7 @@ use SGW_Sales\db\DB;
  */
 abstract class DbTestCase extends TestCase
 {
-    /** @var \PDO */
+    /** @var \PDO|null */
     protected $pdo;
 
     /** @var string */
@@ -20,9 +21,12 @@ abstract class DbTestCase extends TestCase
 
     protected function setUp(): void
     {
+        FaTypes::define();
         $host = getenv('FA_DB_HOST');
         if (!$host) {
-            $this->markTestSkipped('FA_DB_HOST is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)');
+            $this->markTestSkipped(
+                'FA_DB_HOST is not set - run the suite through tools/ci.sh (docker/ci/plugin-test.sh)'
+            );
         }
         $this->prefix = getenv('FA_DB_PREFIX') !== false ? getenv('FA_DB_PREFIX') : '0_';
 
