@@ -9,4 +9,10 @@ class PagerData
     public $prev_page;
     public $next_page;
     public $first_page;
+    /**
+     * The sorted columns, kept across requests as the columns are not:
+     * column index => [ord ('asc' or 'desc'), ord_priority].
+     * @var array<int, array{0: string, 1: int}>
+     */
+    public $sort = [];
 }

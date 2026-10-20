@@ -48,6 +48,7 @@ class ModelPager /*extends db_pager */ implements PagerInterface
     // and before first query.
     var $inactive_ctrl = false;
     var $main_tbl;        // table and key field name for inactive ctrl and edit/delete links
+    var $key;
 
     /** @var string */
     private $className;
@@ -77,6 +78,11 @@ class ModelPager /*extends db_pager */ implements PagerInterface
             if ($this->pagerData->max_page != $maxPage) {
                 $this->pagerData->max_page = $maxPage;
                 $this->set_page(1);
+            }
+        }
+        foreach ($this->pagerData->sort as $col => $sort) {
+            if (isset($this->columns[$col]['ord'])) {
+                [$this->columns[$col]['ord'], $this->columns[$col]['ord_priority']] = $sort;
             }
         }
 
@@ -121,6 +127,11 @@ class ModelPager /*extends db_pager */ implements PagerInterface
         $this->columns[$col]['ord_priority']  = $max_priority + 1; // set priority , higher than anything else
         $ord = ($ord == '') ? 'asc' : (($ord == 'asc') ? 'desc' : '');
         $this->columns[$col]['ord'] = $ord;
+        if ($ord == '') {
+            unset($this->pagerData->sort[$col]);
+        } else {
+            $this->pagerData->sort[$col] = [$ord, $max_priority + 1];
+        }
         $this->set_page(1);
         $this->query();
         return true;
@@ -136,7 +147,27 @@ class ModelPager /*extends db_pager */ implements PagerInterface
         if ($this->rec_count == 0) return true;
 
         $queryFunction = $this->className . '::findByQuery';
-        $this->queryResult = $queryFunction($this->query, $this->page_len, $this->recordOffset());
+        $this->queryResult = $queryFunction($this->query, $this->page_len, $this->recordOffset(), $this->sortOrder());
+    }
+
+    /**
+     * The sorted columns for findByQuery(): column name => 'asc' or 'desc', the
+     * column sorted last first, as FrontAccounting's db_pager orders them.
+     * @return array<string, string>
+     */
+    private function sortOrder()
+    {
+        $sorted = array_filter($this->columns, function ($col) {
+            return isset($col['name']) && !empty($col['ord']);
+        });
+        uasort($sorted, function ($a, $b) {
+            return ($b['ord_priority'] ?? 0) <=> ($a['ord_priority'] ?? 0);
+        });
+        $order = [];
+        foreach ($sorted as $col) {
+            $order[$col['name']] = $col['ord'];
+        }
+        return $order;
     }
 
     public function generator() {
@@ -290,6 +321,9 @@ class ModelPager /*extends db_pager */ implements PagerInterface
     function set_inactive_ctrl($table, $key)
     {
         $this->inactive_ctrl = array('table' => $table, 'key' => $key);
+        // What inactive_control_cell() reads: db_pager has them from its constructor.
+        $this->main_tbl = $table;
+        $this->key = $key;
     }
     //
     //	Helper for display inactive control cells
@@ -303,10 +337,14 @@ class ModelPager /*extends db_pager */ implements PagerInterface
 
             $key = $this->key ?
                 $this->key : $this->columns[0]['name'];        // TODO - support for complex keys
-            $id = $row[$key];
+            // A model's row is an object, its properties the columns camel-cased
+            // (as Anorm maps them); a db_pager's an array. $key stays the column,
+            // for update_record_status().
+            $property = lcfirst(str_replace('_', '', ucwords($key, '_')));
+            $id = is_object($row) ? $row->$property : $row[$key];
             $table = $this->main_tbl;
             $name = "Inactive" . $id;
-            $value = $row['inactive'] ? 1 : 0;
+            $value = (is_object($row) ? $row->inactive : $row['inactive']) ? 1 : 0;
 
             if (check_value('show_inactive')) {
                 if (isset($_POST['LInact'][$id]) && (get_post('_Inactive' . $id . '_update') ||

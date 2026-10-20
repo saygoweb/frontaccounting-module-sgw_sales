@@ -93,6 +93,20 @@ class ModelPagerTest extends FaTestCase
     }
 
     /**
+     * The order numbers on the first page sorted by $orderBy, from the database.
+     *
+     * @return int[]
+     */
+    private function sortedPage(string $orderBy): array
+    {
+        return array_map('intval', $this->pdo()->query(
+            'SELECT so.order_no FROM ' . DB::prefix('sales_orders') . ' AS so'
+            . ' JOIN ' . DB::prefix('debtors_master') . ' AS debtor ON debtor.debtor_no=so.debtor_no'
+            . " ORDER BY $orderBy, so.order_no LIMIT " . self::PAGE
+        )->fetchAll(\PDO::FETCH_COLUMN));
+    }
+
+    /**
      * @return int[]
      */
     private function listed(ModelPager $pager): array
@@ -295,7 +309,7 @@ class ModelPagerTest extends FaTestCase
         $this->assertSame('asc', $pager->columns[1]['ord']);
         $this->assertSame(1, $pager->columns[1]['ord_priority']);
         $this->assertSame(1, $pager->curr_page);
-        $this->assertSame($this->page(1), $this->listed($pager));
+        $this->assertSame($this->sortedPage('so.reference'), $this->listed($pager));
 
         $pager->sort_table(2);
         $this->assertSame('asc', $pager->columns[2]['ord']);
@@ -307,6 +321,70 @@ class ModelPagerTest extends FaTestCase
 
         $this->assertTrue($pager->sort_table(1));
         $this->assertSame('', $pager->columns[1]['ord']);
+    }
+
+    public function testTheSortIsKeptFromOneRequestToTheNextAndOrdersTheRows(): void
+    {
+        $this->assertNotSame(
+            $this->sortedPage('so.order_no'),
+            $this->sortedPage('debtor.name DESC'),
+            'the demo customers sort apart from the order numbers'
+        );
+
+        $this->press([self::NAME . '_sort_2' => 'Customer']);
+        $pager = $this->press([]);
+        $this->assertSame('asc', $pager->columns[2]['ord']);
+        $this->assertSame($this->sortedPage('debtor.name'), $this->listed($pager));
+
+        $pager = $this->press([self::NAME . '_sort_2' => 'Customer']);
+        $this->assertSame('desc', $pager->columns[2]['ord']);
+        $this->assertSame($this->sortedPage('debtor.name DESC'), $this->listed($pager));
+
+        // The column sorted last comes first.
+        $this->press([self::NAME . '_sort_1' => 'Ref']);
+        $pager = $this->press([]);
+        $this->assertSame($this->sortedPage('so.reference, debtor.name DESC'), $this->listed($pager));
+
+        $this->press([self::NAME . '_sort_1' => 'Ref']);
+        $this->press([self::NAME . '_sort_1' => 'Ref']);
+        $this->press([self::NAME . '_sort_2' => 'Customer']);
+        $pager = $this->press([]);
+        $this->assertSame('', $pager->columns[1]['ord']);
+        $this->assertSame('', $pager->columns[2]['ord']);
+        $this->assertSame($this->page(1), $this->listed($pager));
+    }
+
+    public function testOnePagerListsEachPageItIsAskedFor(): void
+    {
+        $pager = $this->pager();
+
+        $pager->change_page(1);
+        $this->assertSame($this->page(1), $this->listed($pager));
+        $pager->change_page(2);
+        $this->assertSame($this->page(2), $this->listed($pager));
+    }
+
+    public function testInactiveControlCellShowsAModelsStatus(): void
+    {
+        $pager = $this->pager(['#' => ['name' => 'orderNo'], 'Inactive' => 'inactive']);
+        $pager->set_inactive_ctrl('sales_orders', 'order_no');
+        $this->assertSame('sales_orders', $pager->main_tbl);
+        $this->assertSame('order_no', $pager->key);
+        $_POST['show_inactive'] = 1;
+        $model = new \stdClass();
+        $model->orderNo = 7;
+        $model->inactive = 1;
+        $array = ['order_no' => 8, 'inactive' => 0];
+
+        ob_start();
+        $pager->inactive_control_cell($model);
+        $pager->inactive_control_cell($array);
+        $html = ob_get_clean();
+
+        $this->assertMatchesRegularExpression("/<input checked [^>]*name=['\"]Inactive7['\"]/", $html);
+        $this->assertMatchesRegularExpression("/<input type=['\"]checkbox['\"] name=['\"]Inactive8['\"]/", $html);
+        $this->assertMatchesRegularExpression("/name=['\"]LInact\\[7\\]['\"][^>]*value=['\"]1['\"]/", $html);
+        $this->assertMatchesRegularExpression("/name=['\"]LInact\\[8\\]['\"][^>]*value=['\"]0['\"]/", $html);
     }
 
     public function testTheMarkerHeaderAndFooterAreKept(): void

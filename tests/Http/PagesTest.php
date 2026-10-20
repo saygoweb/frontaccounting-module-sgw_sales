@@ -19,8 +19,17 @@ class PagesTest extends HttpTestCase
                 '/modules/sgw_sales/generate_recurring_invoices.php', 'Create and Print Recurrent Invoices',
                 'GenerateInvoices',
             ],
-            'order inquiry' => ['/modules/sgw_sales/inquiry/sales_orders_view.php?type=30', null, 'orders_tbl'],
+            'order inquiry' => [
+                '/modules/sgw_sales/inquiry/sales_orders_view.php?type=30', null,
+                self::hasControlRenderer() ? 'orders_tbl' : 'needs the cambell-prince FrontAccounting fork',
+            ],
         ];
+    }
+
+    /** The cp fork's: upstream's display_db_pager() cannot render the inquiry's ModelPager. */
+    private static function hasControlRenderer(): bool
+    {
+        return is_file(getenv('FA_ROOT') . '/includes/ui/ControlRenderer.inc');
     }
 
     /** @dataProvider pages */

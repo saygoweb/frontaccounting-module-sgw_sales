@@ -1,11 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: "#^Access to an undefined property SGW\\\\common\\\\Pager\\\\ModelPager\\:\\:\\$key\\.$#"
-			count: 1
-			path: includes/common/Pager/ModelPager.php
-
-		-
 			message: "#^Constructor of class SGW\\\\common\\\\Pager\\\\SqlPager has an unused parameter \\$table\\.$#"
 			count: 1
 			path: includes/common/Pager/SqlPager.php

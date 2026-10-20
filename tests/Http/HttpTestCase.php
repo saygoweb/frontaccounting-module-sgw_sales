@@ -150,7 +150,7 @@ abstract class HttpTestCase extends TestCase
      * A sales order with no recurrence yet, from whatever dataset is loaded. One that
      * holds no stock (service lines only) where there is one: every generation
      * delivers the order again, these documents are not rolled back, and the
-     * service refuses a delivery the stock cannot cover.
+     * service refuses a delivery the stock cannot cover. And priced where one is.
      */
     protected function unrecurredOrder(): int
     {
@@ -162,6 +162,9 @@ abstract class HttpTestCase extends TestCase
             . ' ORDER BY EXISTS (SELECT 1 FROM ' . DB::prefix('sales_order_details') . ' AS line'
             . ' JOIN ' . DB::prefix('stock_master') . ' AS item ON item.stock_id=line.stk_code'
             . " WHERE line.order_no=so.order_no AND line.trans_type=so.trans_type AND item.mb_flag IN ('B', 'M')),"
+            // Priced, so that its invoice posts to the GL (assertGlBalanced()).
+            . ' NOT EXISTS (SELECT 1 FROM ' . DB::prefix('sales_order_details') . ' AS line'
+            . ' WHERE line.order_no=so.order_no AND line.trans_type=so.trans_type AND line.unit_price > 0),'
             . ' so.order_no DESC LIMIT 1'
         )->fetchColumn();
         if (!$orderNo) {
@@ -208,11 +211,14 @@ abstract class HttpTestCase extends TestCase
     protected function assertGlBalanced(int $deliveryNo, int $invoiceNo): void
     {
         $statement = Anorm::pdo()->prepare(
-            'SELECT ROUND(SUM(amount), 2) FROM ' . DB::prefix('gl_trans')
+            'SELECT COUNT(*), ROUND(SUM(amount), 2) FROM ' . DB::prefix('gl_trans')
             . ' WHERE (type=' . ST_CUSTDELIVERY . ' AND type_no=:d) OR (type=' . ST_SALESINVOICE . ' AND type_no=:i)'
         );
         $statement->execute([':d' => $deliveryNo, ':i' => $invoiceNo]);
-        $this->assertEquals(0.0, (float) $statement->fetchColumn(), 'GL not balanced');
+        [$rows, $sum] = $statement->fetch(\PDO::FETCH_NUM);
+        // No rows sums to NULL, which would pass for balanced.
+        $this->assertGreaterThan(0, (int) $rows, 'the invoice posted nothing to the GL');
+        $this->assertEquals(0.0, (float) $sum, 'GL not balanced');
     }
 
     /** A monthly recurrence on the 1st whose next date is $dtNext (null: never generated, started 2016). */

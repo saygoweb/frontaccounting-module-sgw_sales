@@ -167,7 +167,13 @@ class SalesOrderListView {
         end_row();
         end_table(1);
 
-        display_db_pager($table);
+        // A ModelPager renders through the cp fork's ControlRenderer (its
+        // PagerInterface support); upstream's display_db_pager() reads a db_pager.
+        if (class_exists('ControlRenderer', false)) {
+            display_db_pager($table);
+        } else {
+            display_warning(_("The order list needs the cambell-prince FrontAccounting fork (master-cp) to show its orders."));
+        }
         submit_center('Update', _("Update"), true, '', null);
         
         end_form();
