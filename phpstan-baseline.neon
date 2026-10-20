@@ -1,11 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: "#^Constructor of class SGW\\\\common\\\\Pager\\\\SqlPager has an unused parameter \\$table\\.$#"
-			count: 1
-			path: includes/common/Pager/SqlPager.php
-
-		-
 			message: "#^Call to function is_array\\(\\) with \\(Generator\\<mixed, SGW_Sales\\\\db\\\\GenerateRecurringModel, mixed, mixed\\>&iterable\\<SGW_Sales\\\\db\\\\GenerateRecurringModel\\>\\)\\|true will always evaluate to false\\.$#"
 			count: 1
 			path: includes/service/RecurringInvoiceService.php

@@ -3,7 +3,6 @@ namespace SGW_Sales\controller;
 
 use SalesOrderListView;
 use SGW\common\Pager\ModelPager;
-use SGW\common\Pager\SqlPager;
 use SGW_Sales\db\SalesOrderListModel;
 
 class SalesOrderList {
@@ -194,11 +193,6 @@ class SalesOrderList {
             $this->trans_type
         );
         $table = new ModelPager('orders_tbl', SalesOrderListModel::class, $query, $count, $cols);
-
-        // $sql = get_sql_for_sales_orders_view($this->trans_type, get_post('OrderNumber'), get_post('order_view_mode'),
-        //     get_post('SelectStockFromList'), get_post('OrdersAfterDate'), get_post('OrdersToDate'), get_post('OrderReference'), get_post('StockLocation'),
-        //     get_post('customer_id'));
-        // $table =& SqlPager::new_db_pager('orders_tbl', $sql, $cols);
 
         $table->set_marker([$this, 'check_overdue'], _("Marked items are overdue."));
         
