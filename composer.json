@@ -31,7 +31,7 @@
     },
     "scripts": {
         "test": "phpunit -c phpunit.xml",
-        "lint": "find . -name vendor -prune -o -name node_modules -prune -o -name .claude -prune -o -type f \\( -name '*.php' -o -name '*.inc' \\) -print0 | xargs -0 -n1 php -l",
+        "lint": "find . -name vendor -prune -o -name .claude -prune -o -type f \\( -name '*.php' -o -name '*.inc' \\) -print0 | xargs -0 -n1 php -l",
         "cs:check": "phpcs",
         "cs:fix": "phpcbf",
         "analyze": "phpstan analyse --no-progress --memory-limit=512M",
@@ -44,7 +44,8 @@
             "@quality",
             "@test"
         ],
-        "package": "make.phar package"
+        "fa:version": "sh ../../docker/ci/fa-module version",
+        "fa:package": "sh ../../docker/ci/fa-module package"
     },
     "scripts-descriptions": {
         "test": "Run the PHPUnit suites. db, integration and http need FrontAccounting, its database and the GraphQL module beside this one - tools/ci.sh, run in the FrontAccounting CI image, provides them.",
@@ -54,6 +55,12 @@
         "analyze": "Run PHPStan at level 5 over includes/ and tests/ (phpstan.neon, with its baseline).",
         "quality": "lint, cs:check, then analyze - the static gates.",
         "ci": "quality, then test - the same gates tools/ci.sh runs in CI.",
-        "package": "Build the release zip and tarball (needs make.phar; see README)."
+        "fa:version": "Print this checkout's release version (FrontAccounting's docker/ci/fa-module; run inside modules/sgw_sales).",
+        "fa:package": "Build the release .tgz and .zip into build/dist/ (docker/ci/fa-module; see README, Releasing)."
+    },
+    "extra": {
+        "fa-module": {
+            "name": "Recurring Sales"
+        }
     }
 }

@@ -1,5 +1,4 @@
 /vendor/
-/node_modules/
 /_frontaccounting
 /.vscode
 /.claude/
@@ -18,3 +17,7 @@ log/
 
 # tools/coverage.sh's Clover reports
 /build/
+
+# Release packaging (docker/ci/fa-module)
+/_init/
+/build/dist/
