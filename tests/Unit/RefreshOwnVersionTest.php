@@ -47,11 +47,18 @@ class RefreshOwnVersionTest extends TestCase
         rmdir($this->root);
     }
 
-    private function hooks(): \hooks_sgw_sales
+    /**
+     * hooks_sgw_sales is global and loaded in setUp(), so static analysis cannot see it.
+     * @return mixed
+     */
+    private function hooks()
     {
         // The constructor connects to the company's database; the hook needs none of that.
-        $hooks = (new \ReflectionClass(\hooks_sgw_sales::class))->newInstanceWithoutConstructor();
-        $hooks->module_name = 'sgw_sales';
+        /** @var class-string $name */
+        $name = 'hooks_sgw_sales';
+        $class = new \ReflectionClass($name);
+        $hooks = $class->newInstanceWithoutConstructor();
+        $class->getProperty('module_name')->setValue($hooks, 'sgw_sales');
         return $hooks;
     }
 
