@@ -199,3 +199,19 @@ With that repository checked out beside this one, the same runs locally are:
 `tools/coverage.sh`, with the second command's setup, measures the unit, db and
 integration suites and the GraphQL-extension suite into `build/coverage.xml` and
 `build/coverage-graphql.xml`; CI sends both to Codecov.
+
+## Releasing
+
+Releases are tags. On the deploy branch (`master`), with CI green:
+
+    git tag v1.2.3 && git push origin v1.2.3
+
+`.github/workflows/release.yml` runs the tests, then packages the module with
+FrontAccounting's `docker/ci/fa-module` and publishes the GitHub release:
+`frontaccounting-2.4-sgw_sales.module.1.2.3.tgz` and `.zip`, each with
+`_init/config` (`Version: 2.4-1.2.3`). Untagged builds, such as bms's deploys,
+are versioned `2.4-1.2.3-<n>-g<sha>`.
+
+`composer fa:version` prints this checkout's version and
+`composer fa:package` builds the packages into `build/dist/`. Both run from
+inside a FrontAccounting checkout (`modules/sgw_sales`).

@@ -103,6 +103,9 @@ class hooks_sgw_sales extends hooks {
 	{
 		global $db_connections;
 
+		if (!$check_only)
+			$this->refresh_own_version();
+
 		// In order: 1.0 creates the table (checked by its existence), 1.4 makes
 		// dt_end/dt_next nullable and trans_no unique (checked by dt_next's
 		// nullability: check_table() returns 3 while it is NOT NULL). Before 1.4 on a
@@ -113,6 +116,36 @@ class hooks_sgw_sales extends hooks {
 		);
 
 		return $this->update_databases($company, $updates, $check_only);
+	}
+
+	/*
+		Stock FrontAccounting reads modules/<id>/_init/config (written by the
+		module's build, docker/ci/fa-module) only when the extension is first
+		installed. Refresh the stored version on activation so an upgrade shows
+		its version on Install/Activate Extensions.
+	*/
+	function refresh_own_version()
+	{
+		global $path_to_root;
+
+		$file = $path_to_root.'/modules/'.$this->module_name.'/_init/config';
+		if (!is_file($file))
+			return;
+		$version = null;
+		foreach (file($file) as $line)
+			if (preg_match('/^Version:\s*(\S+)/', $line, $m))
+				$version = $m[1];
+		if ($version === null)
+			return;
+		$exts = get_company_extensions();
+		foreach ($exts as $i => $ext)
+			if (@$ext['package'] === $this->module_name && @$ext['type'] === 'extension') {
+				if (@$ext['version'] !== $version) {
+					$exts[$i]['version'] = $version;
+					update_extensions($exts);
+				}
+				return;
+			}
 	}
 
 	/*
